@@ -26,10 +26,8 @@ public class Monitor {
 	private int mAppUid;
 	private DecimalFormat mFormater;
 	private double[] mNetworkData;
-	private StringBuilder mLogBuilder;
 	private boolean mNewStart;
 	private String mRecordFilePath;
-	private Thread mThread;
 
 	public static Monitor getInstance() {
 		if (sInstance == null) {
@@ -54,8 +52,6 @@ public class Monitor {
 		mAppUid = ProcessUtil.getUidByPid(mAppPid);
 
 		mNetworkData = retriveNetworkData();
-		mLogBuilder = new StringBuilder();
-
 		mNewStart = true;
 
 		if (!TestFileManager.REPORT_ROOT.exists()) {
@@ -74,56 +70,44 @@ public class Monitor {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		mLogBuilder.setLength(0);
 		mNetworkData = retriveNetworkData();
-
-		mThread = new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				Process cpuProcess = null;
-				BufferedReader mReader = null;
-				try {
-					cpuProcess = Runtime.getRuntime().exec(
-							"adb logcat | grep " + mAppPid + "\n");
-					mReader = new BufferedReader(new InputStreamReader(
-							cpuProcess.getInputStream(), "UTF-8"));
-					String line = null;
-					while ((line = mReader.readLine()) != null) {
-						if (Thread.currentThread().isInterrupted()) {
-							return;
-						}
-
-						if (line.equals("")) {
-							continue;
-						}
-
-						mLogBuilder.append(line).append("\n");
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				} finally {
-					if (mReader != null) {
-						try {
-							mReader.close();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-					if (cpuProcess != null) {
-						cpuProcess.destroy();
-						cpuProcess = null;
-					}
-				}
-			}
-		});
-		mThread.start();
 	}
 
 	public void recordActionEnd(int index, String action) {
-		if (mThread != null) {
-			mThread.interrupt();
-			mThread = null;
+		Process cpuProcess = null;
+		BufferedReader mReader = null;
+		StringBuilder logBuilder = new StringBuilder();
+		try {
+			cpuProcess = Runtime.getRuntime().exec(
+					"adb logcat | grep " + mAppPid + "\n");
+			mReader = new BufferedReader(new InputStreamReader(
+					cpuProcess.getInputStream(), "UTF-8"));
+			String line = null;
+			while ((line = mReader.readLine()) != null) {
+				if (Thread.currentThread().isInterrupted()) {
+					return;
+				}
+
+				if (line.equals("")) {
+					continue;
+				}
+
+				logBuilder.append(line).append("\n");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (mReader != null) {
+				try {
+					mReader.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (cpuProcess != null) {
+				cpuProcess.destroy();
+				cpuProcess = null;
+			}
 		}
 
 		String memoInfoTotal = new ShellExecute().execute("dumpsys meminfo "
@@ -153,7 +137,7 @@ public class Monitor {
 		record.put("cpu", cupProcent);
 
 		JSONObject data = new JSONObject();
-		data.put("log", mLogBuilder.toString());
+		data.put("log", logBuilder.toString());
 		data.put("mem", memoInfoTotal);
 		record.put("data", data);
 

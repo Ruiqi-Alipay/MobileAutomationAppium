@@ -55,7 +55,7 @@ public class TestCaseRunner {
 				+ "  <<<<<<<<<<<<<<<<<<<<<<<<");
 		TestCase testCase = TestContext.getInstance().getTestcase(caseIndex);
 		LogUtils.log("Creating trade ID..");
-		// testCase.prepareRecursiveData();
+		testCase.prepareRecursiveData();
 		LogUtils.log("Creat trade ID finished");
 
 		boolean result = true;
