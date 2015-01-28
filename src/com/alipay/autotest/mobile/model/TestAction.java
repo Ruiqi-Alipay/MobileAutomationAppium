@@ -8,6 +8,7 @@ import io.appium.java_client.android.AndroidKeyCode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -33,21 +34,22 @@ public class TestAction implements TestActionInterface {
 	// action target
 	private TestTarget mTarget;
 
-	public static List<TestAction> convertToActions(JSONArray actionArray)
-			throws Exception {
+	public static List<TestAction> convertToActions(JSONArray actionArray,
+			Map<String, String> serverPramMap) throws Exception {
 		List<TestAction> actionList = new ArrayList<TestAction>();
 		if (actionArray != null) {
 			int length = actionArray.length();
 			for (int i = 0; i < length; i++) {
-				actionList.add(convertToAction(actionArray.getJSONObject(i)));
+				actionList.add(convertToAction(actionArray.getJSONObject(i),
+						serverPramMap));
 			}
 		}
 
 		return actionList;
 	}
 
-	public static TestAction convertToAction(JSONObject actionObject)
-			throws Exception {
+	public static TestAction convertToAction(JSONObject actionObject,
+			Map<String, String> serverPramMap) throws Exception {
 		String actionType = actionObject.getString(TYPE);
 		String actionParams = null;
 		String textTarget = null;
@@ -63,6 +65,13 @@ public class TestAction implements TestActionInterface {
 			if (actionObject.has(TARGET)) {
 				textTarget = actionObject.getString(TARGET);
 				if (!TextUtils.isEmpty(textTarget)) {
+					if (textTarget.indexOf("{") == 0
+							&& textTarget.indexOf("}") == (textTarget.length() - 1)) {
+						String paramKey = textTarget.substring(1, textTarget.length() - 1);
+						if (serverPramMap.containsKey(paramKey)) {
+							textTarget = serverPramMap.get(paramKey);
+						}
+					}
 					target = new TestTarget(textTarget);
 				}
 			}

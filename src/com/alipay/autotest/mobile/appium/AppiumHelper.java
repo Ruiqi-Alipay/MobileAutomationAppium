@@ -24,8 +24,10 @@ import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestTarget;
 import com.alipay.autotest.mobile.utils.AliKeyboardManager;
 import com.alipay.autotest.mobile.utils.CommandUtil;
+import com.alipay.autotest.mobile.utils.ImageUtils;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.StringUtil;
+import com.alipay.autotest.mobile.utils.TestFileManager;
 import com.alipay.autotest.mobile.utils.TextUtils;
 
 /**
@@ -109,9 +111,10 @@ public class AppiumHelper {
 	 *            Appium driver
 	 * @param action
 	 *            click/input/clear/scroll, etc
+	 * @throws VerifyFailedException 
 	 */
 	public static void performAction(AppiumDriver driver, TestAction action,
-			int waitSecond) throws NoSuchElementException {
+			int waitSecond) throws NoSuchElementException, VerifyFailedException {
 		LogUtils.log("Perform Action: " + action.getOriginalCommand());
 		TestTarget target = action.getTestTarget();
 		String actionType = action.getType();
@@ -220,8 +223,26 @@ public class AppiumHelper {
 					sleepInMillionsecond(100);
 				}
 			}
-		} else {
-			// not support
+		} else if (TestActionTypes.ACTION_TYPE_TEST_VERIFY.equals(actionType)) {
+			try {
+				boolean result = hasElement(driver, new TestTarget(TestTarget.TARGET_TYPE_NAME,
+						actionParams), waitSecond);
+				if (!result) {
+					throw new VerifyFailedException(action.getOriginalCommand());
+				}
+			} catch (Exception e) {
+				throw new VerifyFailedException(action.getOriginalCommand());
+			}
+		} else if (TestActionTypes.ACTION_TYPE_PIXEL_VERIFY.equals(actionType)) {
+//			try {
+//				File currentActivity = AppiumHelper.takeTempCapture(driver);
+//				float percent = StringUtil.strToFloat(mVerifyParams, 0.8F);
+//				return ImageUtils.sameAs(TestFileManager.getInstance()
+//						.getVerityImageFile(mVerifyElement), currentActivity,
+//						percent);
+//			} catch (Exception e) {
+//				return false;
+//			}
 		}
 	}
 

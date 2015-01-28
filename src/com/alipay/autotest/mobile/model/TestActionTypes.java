@@ -31,4 +31,8 @@ public interface TestActionTypes {
 	 * Screen scroll down
 	 */
 	public final static String ACTION_TYPE_SCROLLDOWN = "向下滚动";
+	
+	
+	public final static String ACTION_TYPE_TEST_VERIFY = "";
+	public final static String ACTION_TYPE_PIXEL_VERIFY = "";
 }

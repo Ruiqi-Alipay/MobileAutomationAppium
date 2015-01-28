@@ -13,13 +13,9 @@ public class TestFileManager {
 
 	// Context root
 	// public final static File ROOT = new File(System.getProperty("user.dir"));
-	public final static File ROOT = new File(
-			"C:/Users/becwu/Documents/Ruiqi/AutomationEnvironment");
+	public final static File ROOT = new File("C:/test_environment");
 
-	// Test case script file
-	public final static File TEST_CASE_DIR = new File(ROOT, "/test_cases");
-
-	// Test verify image file
+	// Test verify image fileF
 	public final static File TEST_VERIFY_IMG_DIR = new File(ROOT,
 			"/verify_image");
 

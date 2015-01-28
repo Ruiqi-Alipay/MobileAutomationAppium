@@ -6,11 +6,8 @@ package com.alipay.autotest.mobile.model;
  * @author ruiqi.li
  */
 public interface TestCaseInterface {
-
-	/**
-	 * Test case category
-	 */
-	public final static String CASE_CATEGORY = "category";
+	
+	public final static String CASE_CONFIG_REF = "configRef";
 
 	/**
 	 * Test case title
@@ -23,27 +20,21 @@ public interface TestCaseInterface {
 	public final static String CASE_PARAMETER = "parameters";
 
 	/**
-	 * Test initiate start page, use to reset test case starting point
-	 */
-	public final static String CASE_ROLLBACK_VERIFIES = "rollbackVerifies";
-
-	/**
 	 * Rollback actions, use to bring the display page to the test starting
 	 * page.
 	 */
-	public final static String CASE_ROLLBACK_ACTIONS = "rollback";
+	public final static String CASE_ROLLBACK_ACTIONS = "rollbackActions";
 
 	/**
 	 * Action list
 	 */
 	public final static String CASE_ACTIONS = "actions";
 	
-	public final static String CASE_SUIT_ACTIONS = "suitActions";
-
-	/**
-	 * Success stander
-	 */
-	public final static String CASE_VERIFIES = "verifies";
-
-	public final static String CASE_RECUR_NAME = "recurParam";
+	
+	public final static String CASE_ORDER = "order";
+	
+	public final static String CASE_ORDER_REF = "reference";
+	public final static String CASE_ORDER_AMOUNT = "amount";
+	public final static String CASE_ORDER_COUPONAMOUNT = "couponAmount";
+	public final static String CASE_ORDER_COUNT = "count";
 }

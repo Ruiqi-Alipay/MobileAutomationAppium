@@ -21,39 +21,27 @@ import com.alipay.autotest.mobile.utils.DataBankComUtils;
  */
 public class TestCase implements TestCaseInterface {
 
-	// Test case title, extract from yaml script
-	private String mCategory;
-
 	// Test case description, extract from yaml script
 	private String mName;
 
 	// Test case parameter, extract from yaml script
 	private Map<String, String> mParamsMap;
 
-	private List<TestAction> mSuitActions;
-
 	// Test case command queue, extract from yaml script, will be execute one by
 	// one starting from the first item in the array
 	private List<TestAction> mActions;
 
-	// Success stander, all verify case in this array must success executed when
-	// we mark this whole test case as success
-	private List<TestVerify> mTestResultVerifys;
-
 	private List<TestAction> mRollbackActions;
 
-	private List<TestVerify> mStartingPageVerifies;
-
-	private String mRecursiveParam;
-	private String mRecursiveBuyerId;
-	private int mRecursiveCombine;
+	private String mOrderRef;
+	private String mBuyerId;
+	private int mCombineCount;
 	private String mAmount;
 	private String mCouponAmount;
+	private String mConfigRef;
 
-	public static TestCase parseJSON(JSONObject scriptJson,
-			String recursivePram, String recursiveBuyerId,
-			int recursiveCombine, String amount, String couponAmount)
-			throws Exception {
+	public static TestCase parseJSON(JSONObject scriptJson, String buyerId,
+			Map<String, String> serverparams) throws Exception {
 		Map<String, String> paramsMap = new HashMap<String, String>();
 		if (scriptJson.has(CASE_PARAMETER)) {
 			JSONArray originalParamArray = scriptJson
@@ -65,96 +53,103 @@ public class TestCase implements TestCaseInterface {
 			}
 		}
 
-		String category = scriptJson.getString(CASE_CATEGORY);
 		String name = scriptJson.getString(CASE_TITLE);
 		if (paramsMap.containsKey(name)) {
 			name = paramsMap.get(name);
 		}
 
-		List<TestAction> suitActionList = null;
-		if (scriptJson.has(CASE_SUIT_ACTIONS)) {
-			suitActionList = TestAction.convertToActions(scriptJson
-					.getJSONArray(CASE_SUIT_ACTIONS));
+		String configRef = null;
+		if (scriptJson.has(CASE_CONFIG_REF)) {
+			configRef = scriptJson.getString(CASE_CONFIG_REF);
 		}
+
+		String orderRef = null;
+		int count = 1;
+		String amount = null;
+		String couponAmount = null;
+		if (scriptJson.has(CASE_ORDER)) {
+			JSONObject order = scriptJson.getJSONObject(CASE_ORDER);
+			if (order.has(CASE_ORDER_REF)) {
+				orderRef = String.valueOf(order.get(CASE_ORDER_REF));
+			}
+
+			if (order.has(CASE_ORDER_AMOUNT)) {
+				amount = String.valueOf(order.get(CASE_ORDER_AMOUNT));
+			}
+
+			if (order.has(CASE_ORDER_COUPONAMOUNT)) {
+				couponAmount = String.valueOf(order
+						.get(CASE_ORDER_COUPONAMOUNT));
+			}
+
+			if (order.has(CASE_ORDER_COUNT)) {
+				count = order.getInt(CASE_ORDER_COUNT);
+			}
+		}
+
 		List<TestAction> rollbackActions = null;
 		if (scriptJson.has(CASE_ROLLBACK_ACTIONS)) {
-			rollbackActions = TestAction.convertToActions(scriptJson
-					.getJSONArray(CASE_ROLLBACK_ACTIONS));
-		}
-		List<TestVerify> startingPageVerifies = null;
-		if (scriptJson.has(CASE_ROLLBACK_VERIFIES)) {
-			TestVerify.convertToVerifies(scriptJson
-					.getJSONArray(CASE_ROLLBACK_VERIFIES));
+			rollbackActions = TestAction.convertToActions(
+					scriptJson.getJSONArray(CASE_ROLLBACK_ACTIONS),
+					serverparams);
 		}
 
-		List<TestAction> actionList = TestAction.convertToActions(scriptJson
-				.getJSONArray(CASE_ACTIONS));
-		List<TestVerify> resultVerifyList = TestVerify
-				.convertToVerifies(scriptJson.getJSONArray(CASE_VERIFIES));
+		List<TestAction> actionList = null;
+		if (scriptJson.has(CASE_ACTIONS)) {
+			actionList = TestAction.convertToActions(
+					scriptJson.getJSONArray(CASE_ACTIONS), serverparams);
+		}
 
-		return new TestCase(category, name, paramsMap, suitActionList,
-				actionList, resultVerifyList, rollbackActions,
-				startingPageVerifies, recursivePram, recursiveBuyerId,
-				recursiveCombine, amount, couponAmount);
+		return new TestCase(name, paramsMap, actionList, rollbackActions,
+				orderRef, buyerId, count, amount, couponAmount, configRef);
 	}
 
-	public TestCase(String title, String name, Map<String, String> paramsMap,
-			List<TestAction> suitActions, List<TestAction> actions,
-			List<TestVerify> resultVerifies, List<TestAction> rollbackActions,
-			List<TestVerify> startingPageVerifies, String recursivePram,
-			String recursiveBuyerId, int recursiveCombine, String amount,
-			String couponAmount) {
-		mCategory = title;
+	public TestCase(String name, Map<String, String> paramsMap,
+			List<TestAction> actions, List<TestAction> rollbackActions,
+			String orderRef, String buyerId, int count, String amount,
+			String couponAmount, String configRef) {
 		mName = name;
 		mParamsMap = paramsMap;
-		mSuitActions = suitActions;
 		mActions = actions;
-		mTestResultVerifys = resultVerifies;
 		mRollbackActions = rollbackActions;
-		mStartingPageVerifies = startingPageVerifies;
-		mRecursiveParam = recursivePram;
-		mRecursiveBuyerId = recursiveBuyerId;
-		mRecursiveCombine = recursiveCombine;
+		mOrderRef = orderRef;
+		mBuyerId = buyerId;
+		mCombineCount = count;
 		mAmount = amount;
 		mCouponAmount = couponAmount;
+		mConfigRef = configRef;
 	}
 
 	public void prepareRecursiveData() {
-		if (mRecursiveParam == null) {
+		if (mOrderRef == null) {
 			return;
 		}
-		
+
 		Random random = new Random();
 		StringBuilder recursiveParamBuilder = new StringBuilder();
-		for (int i = 0; i < mRecursiveCombine; i++) {
-			String amount = String.valueOf(random.nextInt(100) + 1);
-			String couponAmount = "0";
-			try {
-				amount = String.valueOf(Double.valueOf(mAmount));
-				couponAmount = String.valueOf(Double.valueOf(mCouponAmount));
-			} catch (Exception e) {
+		for (int i = 0; i < mCombineCount; i++) {
+			String amount = mAmount;
+			if (amount == null) {
+				amount = String.valueOf(random.nextInt(100) + 1);
+			}
 
+			String couponAmount = mCouponAmount;
+			if (couponAmount == null) {
+				couponAmount = String.valueOf(random.nextInt(100) + 1);
 			}
 
 			recursiveParamBuilder.append(DataBankComUtils.creatNewIpayTradeNo(
-					mRecursiveBuyerId, amount, couponAmount));
-			if (i != mRecursiveCombine - 1) {
+					mBuyerId, amount, couponAmount));
+			if (i != mCombineCount - 1) {
 				recursiveParamBuilder.append(",");
 			}
 		}
 
-		mParamsMap.put(mRecursiveParam, recursiveParamBuilder.toString());
-	}
-	
-	public String getRecursivePram() {
-		return mRecursiveParam;
+		mParamsMap.put(mOrderRef, recursiveParamBuilder.toString());
 	}
 
-	/**
-	 * @return test case title, use as indicator
-	 */
-	public String getCategory() {
-		return mCategory;
+	public String getRecursivePram() {
+		return mOrderRef;
 	}
 
 	public void setName(String name) {
@@ -169,12 +164,12 @@ public class TestCase implements TestCaseInterface {
 		return mCouponAmount;
 	}
 
-	public List<TestAction> getRollbackActions() {
-		return mRollbackActions;
+	public String getConfigRef() {
+		return mConfigRef;
 	}
 
-	public List<TestVerify> getStartPageVerifies() {
-		return mStartingPageVerifies;
+	public List<TestAction> getRollbackActions() {
+		return mRollbackActions;
 	}
 
 	/**
@@ -196,25 +191,6 @@ public class TestCase implements TestCaseInterface {
 	 */
 	public List<TestAction> getActions() {
 		return mActions;
-	}
-
-	/**
-	 * @return action list
-	 */
-	public List<TestAction> getSuitActions() {
-		return mSuitActions;
-	}
-
-	/**
-	 * @return verify list
-	 */
-	public List<TestVerify> getVerifies() {
-		return mTestResultVerifys;
-	}
-
-	@Override
-	public String toString() {
-		return mCategory;
 	}
 
 }

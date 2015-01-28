@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.remote.CapabilityType;
@@ -21,11 +23,11 @@ import org.testng.xml.XmlTest;
 import com.alipay.autotest.mobile.SystemPropoerties;
 import com.alipay.autotest.mobile.model.TestAction;
 import com.alipay.autotest.mobile.model.TestCase;
-import com.alipay.autotest.mobile.model.TestCaseInterface;
 import com.alipay.autotest.mobile.testsuites.TestCaseRunner;
 import com.alipay.autotest.mobile.utils.ApkUtil;
 import com.alipay.autotest.mobile.utils.CommandUtil;
 import com.alipay.autotest.mobile.utils.FileUtils;
+import com.alipay.autotest.mobile.utils.HttpUtils;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.TestFileManager;
 
@@ -33,9 +35,9 @@ public class TestContext {
 
 	private static TestContext sInstance;
 
-	private List<TestCase> mTestCaseList;
 	private List<XmlSuite> mTestSuites;
-	private Map<String, List<Integer>> mTestcaseByCategory;
+	private Map<String, List<TestCase>> mTestcaseByCategory;
+	private Map<String, TestCase> mConfigScriptMap;
 
 	private Process mAppiumProcess;
 	private AppiumDriver mAppiumDriver;
@@ -152,31 +154,51 @@ public class TestContext {
 		}
 	}
 
-	public void setupContext(String[] args) throws Exception {
+	public void setupContext() throws Exception {
 		System.setProperty("org.uncommons.reportng.escape-output", "false");
 		System.setProperty("org.uncommons.reportng.locale", "zh_CN");
 
-		mDefaultRollbackActions = new ArrayList<TestAction>();
-		File rollbackFile = new File(TestFileManager.ROOT,
-				"rollback_actions.json");
-		if (rollbackFile.exists()) {
-			String jsonText = new String(FileUtils.readBytes(rollbackFile),
-					"UTF-8");
-			JSONObject scriptJson = new JSONObject(jsonText);
-			mDefaultRollbackActions.addAll(TestAction
-					.convertToActions(scriptJson
-							.getJSONArray(TestCase.CASE_ROLLBACK_ACTIONS)));
+		List<String> scriptIds = null;
+		int runtimes = 1;
+		String accountNum = null;
+		Scanner scanner = null;
+		try {
+			scanner = new Scanner(System.in);
+			scriptIds = userSelectScript(scanner);
+			runtimes = userEnterRuntimes(scanner);
+			accountNum = userEnterAccount(scanner);
+		} finally {
+			if (scanner != null) {
+				scanner.close();
+				scanner = null;
+			}
 		}
 
-		int recursiveCount = Integer.valueOf(args[0]);
-		int recursiveCombine = Integer.valueOf(args[1]);
-		String buyerId = args[2];
-		String amount = args[3];
-		String couponAmount = args[4];
+		JSONObject responseRaw = fetchScriptFromServer(scriptIds);
+		JSONArray runScripts = responseRaw.getJSONArray("scripts");
+		JSONArray serverParameters = responseRaw.getJSONArray("params");
+		Map<String, String> serverParamMap = new HashMap<String, String>();
+		for (int i = 0; i < serverParameters.length(); i++) {
+			JSONObject paramObject = serverParameters.getJSONObject(i);
+			serverParamMap.put(paramObject.getString("name"),
+					paramObject.getString("value"));
+		}
 
-		mTestCaseList = new ArrayList<TestCase>();
-		mTestSuites = new ArrayList<XmlSuite>();
-		mTestcaseByCategory = new HashMap<String, List<Integer>>();
+		mConfigScriptMap = new HashMap<String, TestCase>();
+		mDefaultRollbackActions = new ArrayList<TestAction>();
+		JSONArray configs = responseRaw.getJSONArray("configs");
+		if (configs != null) {
+			for (int i = 0; i < configs.length(); i++) {
+				JSONObject config = configs.getJSONObject(i);
+				TestCase testCase = TestCase.parseJSON(config, null,
+						serverParamMap);
+				if (testCase.getName().equals("ROLLBACK_ACTIONS")) {
+					mDefaultRollbackActions.addAll(testCase.getActions());
+				} else {
+					mConfigScriptMap.put(config.getString("id"), testCase);
+				}
+			}
+		}
 
 		// 2. parse the data
 		mPlatformName = SystemPropoerties.VALUE_ANDROID;
@@ -208,66 +230,32 @@ public class TestContext {
 		// TODO: support ios
 		mTestAppPackage = ApkUtil.getPackageName(mTestAppPath);
 
-		// 4. setup test case from test case script file
-		List<File> testcaseList = new ArrayList<File>();
-		FileUtils.collectFiles(TestFileManager.TEST_CASE_DIR,
-				new FileExtensionFilter(".json"), testcaseList, true);
-		for (File testcaseFile : testcaseList) {
-			String jsonText = new String(FileUtils.readBytes(testcaseFile),
-					"UTF-8");
-			JSONObject scriptJson = new JSONObject(jsonText);
-			String recursiveParam = scriptJson
-					.getString(TestCaseInterface.CASE_RECUR_NAME);
+		mTestSuites = new ArrayList<XmlSuite>();
+		mTestcaseByCategory = new HashMap<String, List<TestCase>>();
+		for (int i = 0; i < runScripts.length(); i++) {
+			JSONObject scriptJson = runScripts.getJSONObject(i);
+			String caseTitle = scriptJson.getString(TestCase.CASE_TITLE);
 
-			for (int i = 0; i < recursiveCount; i++) {
-				mTestCaseList.add(TestCase.parseJSON(scriptJson,
-						recursiveParam, buyerId, recursiveCombine, amount,
-						couponAmount));
+			XmlSuite suite = new XmlSuite();
+			suite.setName(caseTitle);
+			mTestcaseByCategory.put(caseTitle, new ArrayList<TestCase>());
+			mTestSuites.add(suite);
+
+			for (int j = 1; j <= runtimes; j++) {
+				TestCase testCase = TestCase.parseJSON(scriptJson, accountNum,
+						serverParamMap);
+
+				XmlTest test = new XmlTest(suite);
+				test.setName(caseTitle + "-" + j);
+				List<XmlClass> classes = new ArrayList<XmlClass>();
+				classes.add(new XmlClass(TestCaseRunner.class));
+				test.setXmlClasses(classes);
+				test.addParameter("testcaseIndex", String.valueOf(j));
+				test.addParameter("testcaseTotal", String.valueOf(runtimes));
+				test.addParameter("testsuitCategory", caseTitle);
+
+				mTestcaseByCategory.get(caseTitle).add(testCase);
 			}
-		}
-
-		// 5. setup test suites, group by test case category
-		Map<String, XmlSuite> suiteByCategory = new HashMap<String, XmlSuite>();
-		int testcaseSize = mTestCaseList.size();
-		for (int i = 0; i < testcaseSize; i++) {
-			TestCase testCase = mTestCaseList.get(i);
-			String testCaseCategory = testCase.getCategory();
-			XmlSuite suite = suiteByCategory.get(testCaseCategory);
-
-			if (suite == null) {
-				suite = new XmlSuite();
-				suite.setName(testCaseCategory);
-				suiteByCategory.put(testCaseCategory, suite);
-				mTestSuites.add(suite);
-			}
-
-			XmlTest test = new XmlTest(suite);
-			test.setName(testCase.getCategory() + " " + i);
-			List<XmlClass> classes = new ArrayList<XmlClass>();
-			classes.add(new XmlClass(TestCaseRunner.class));
-			test.setXmlClasses(classes);
-			test.addParameter("testcaseIndex", String.valueOf(i));
-			test.addParameter("testcaseTotal", String.valueOf(testcaseSize));
-			test.addParameter("testsuitCategory", testCaseCategory);
-
-			List<Integer> caseIndexList = mTestcaseByCategory
-					.get(testCaseCategory);
-			if (caseIndexList == null) {
-				caseIndexList = new ArrayList<Integer>();
-				mTestcaseByCategory.put(testCaseCategory, caseIndexList);
-			}
-			caseIndexList.add(i);
-		}
-
-		if ("ANDROID".equals(mPlatformName)) {
-			// XmlSuite suite = new XmlSuite();
-			// suite.setName("鎬讳綋浠ｇ爜瑕嗙洊鐜囨姤鍛�");
-			// mTestSuites.add(suite);
-			// XmlTest test = new XmlTest(suite);
-			// test.setName("鎬讳綋浠ｇ爜瑕嗙洊鐜囨姤鍛�");
-			// List<XmlClass> classes = new ArrayList<XmlClass>();
-			// classes.add(new XmlClass(CoverageRunner.class));
-			// test.setXmlClasses(classes);
 		}
 
 		if (mTestSuites.isEmpty()) {
@@ -279,11 +267,8 @@ public class TestContext {
 		if (mTestSuites != null) {
 			mTestSuites.clear();
 		}
-		if (mTestCaseList != null) {
-			mTestCaseList.clear();
-		}
-		if (mTestCaseList != null) {
-			mTestCaseList.clear();
+		if (mTestcaseByCategory != null) {
+			mTestcaseByCategory.clear();
 		}
 	}
 
@@ -319,6 +304,10 @@ public class TestContext {
 		return capabilities;
 	}
 
+	public TestCase getConfigScript(String id) {
+		return mConfigScriptMap.get(id);
+	}
+
 	public List<String> getAppSrcPathList() {
 		return mAppSrcPathList;
 	}
@@ -339,16 +328,124 @@ public class TestContext {
 		return mTestAppPackage;
 	}
 
-	public List<Integer> getTestcaseByCategory(String title) {
-		return mTestcaseByCategory.get(title);
-	}
-
 	public List<XmlSuite> getTestSuites() {
 		return mTestSuites;
 	}
 
-	public TestCase getTestcase(int index) {
-		return mTestCaseList.get(index);
+	public TestCase getTestcase(String cagetory, int index) {
+		return mTestcaseByCategory.get(cagetory).get(index);
 	}
 
+	private List<String> userSelectScript(Scanner scanner) {
+		LogUtils.log("Loading server scripts...");
+		String responseText = HttpUtils
+				.sendGet(
+						"http://autotest.d10970aqcn.alipay.net/autotest/api/scriptlist",
+						null);
+		JSONArray scripts = new JSONArray(responseText);
+		for (int i = 0; i < scripts.length(); i++) {
+			JSONObject script = scripts.getJSONObject(i);
+			LogUtils.log(script.getString("key") + "  "
+					+ script.getString("title"));
+		}
+
+		while (true) {
+			List<String> results = new ArrayList<String>();
+			LogUtils.log("Please enter the script serial number you want to run (split by space):");
+
+			String scriptNumberString = scanner.nextLine();
+			if (scriptNumberString != null) {
+				String[] rawNumbers = scriptNumberString.split(" ");
+				for (String number : rawNumbers) {
+					results.addAll(parseScriptId(scripts, number.trim()));
+				}
+			}
+
+			if (!results.isEmpty()) {
+				return results;
+			}
+		}
+	}
+
+	private int userEnterRuntimes(Scanner scanner) {
+		while (true) {
+			LogUtils.log("How many times you want to run (default: 10):");
+			String rawText = scanner.nextLine();
+			try {
+				if (rawText == null || rawText.length() == 0) {
+					rawText = "10";
+				}
+
+				int times = Integer.valueOf(rawText.trim());
+				return times;
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	private String userEnterAccount(Scanner scanner) {
+		while (true) {
+			LogUtils.log("The account use to create order (default: 2188205012137435):");
+			String rawText = scanner.nextLine();
+			try {
+				if (rawText == null || rawText.length() == 0) {
+					rawText = "2188205012137435";
+				}
+
+				return rawText;
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	private JSONObject fetchScriptFromServer(List<String> ids) {
+		StringBuilder builder = new StringBuilder();
+		for (String id : ids) {
+			builder.append(id).append(",");
+		}
+		builder.deleteCharAt(builder.length() - 1);
+		String responseText = HttpUtils
+				.sendGet(
+						"http://autotest.d10970aqcn.alipay.net/autotest/api/getscripts",
+						"ids=" + builder.toString());
+		return new JSONObject(responseText);
+	}
+
+	private List<String> parseScriptId(JSONArray scripts, String findKey) {
+		List<String> results = new ArrayList<String>();
+		for (int i = 0; i < scripts.length(); i++) {
+			JSONObject script = scripts.getJSONObject(i);
+			String key = script.getString("key");
+			if (key.equals(findKey)) {
+				if (script.has("id")) {
+					results.add(script.getString("id"));
+				} else if (key.indexOf(".") < 0) {
+					int index = 0;
+					while (true) {
+						index++;
+						JSONObject item = finScript(scripts, key + "." + index);
+						if (item == null) {
+							break;
+						}
+						results.add(item.getString("id"));
+					}
+				}
+			}
+		}
+
+		return results;
+	}
+
+	private JSONObject finScript(JSONArray scripts, String findKey) {
+		for (int i = 0; i < scripts.length(); i++) {
+			JSONObject script = scripts.getJSONObject(i);
+			if (script.get("key").equals(findKey)) {
+				return script;
+			}
+		}
+
+		return null;
+	}
 }

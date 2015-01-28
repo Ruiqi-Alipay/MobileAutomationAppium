@@ -3,7 +3,6 @@ package com.alipay.autotest.mobile.testsuites;
 import io.appium.java_client.AppiumDriver;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.openqa.selenium.NoSuchElementException;
@@ -23,7 +22,6 @@ import com.alipay.autotest.mobile.appium.AppiumHelper;
 import com.alipay.autotest.mobile.appium.TestContext;
 import com.alipay.autotest.mobile.model.TestAction;
 import com.alipay.autotest.mobile.model.TestCase;
-import com.alipay.autotest.mobile.model.TestVerify;
 import com.alipay.autotest.mobile.monitor.Monitor;
 import com.alipay.autotest.mobile.monitor.ReportHelper;
 import com.alipay.autotest.mobile.utils.FileNameUtil;
@@ -53,7 +51,8 @@ public class TestCaseRunner {
 		LogUtils.log(">>>>>>>>>>>>>>>>>>>>>>>>  " + testsuitCategory + "  "
 				+ (caseIndex + 1) + "/" + testcaseTotal
 				+ "  <<<<<<<<<<<<<<<<<<<<<<<<");
-		TestCase testCase = TestContext.getInstance().getTestcase(caseIndex);
+		TestCase testCase = TestContext.getInstance().getTestcase(
+				testsuitCategory, caseIndex);
 		LogUtils.log("Creating trade ID..");
 		testCase.prepareRecursiveData();
 		LogUtils.log("Creat trade ID finished");
@@ -66,9 +65,6 @@ public class TestCaseRunner {
 			captureDir.mkdirs();
 		}
 
-		ReportHelper.recordLogLine("类型:" + testCase.getCategory());
-		ReportHelper.recordLogLine("描述:" + testCase.getName());
-
 		dot();
 
 		String message = "启动:" + TestContext.getInstance().getTestAppPath();
@@ -76,31 +72,26 @@ public class TestCaseRunner {
 				"启动界面.png");
 		ReportHelper.recordAction(message, captureImage, true);
 
-		if (caseIndex == 0) {
-			runActions(testCase.getSuitActions(), testCase, caseIndex,
-					captureDir, driver);
-		}
-		runActions(testCase.getActions(), testCase, caseIndex, captureDir,
-				driver);
-
-		List<TestVerify> results = testCase.getVerifies();
-		for (TestVerify verify : results) {
-			result = verify(verify, captureDir, driver, true,
-					AppiumHelper.DEFAULT_WAIT_ELEMENT_SECOND);
-			if (!result) {
-				break;
+		if (caseIndex == 0 && testCase.getConfigRef() != null) {
+			TestCase configScript = TestContext.getInstance().getConfigScript(
+					testCase.getConfigRef());
+			if (configScript != null) {
+				runActions(configScript.getActions(), configScript, caseIndex,
+						captureDir, driver);
 			}
 		}
+		result = runActions(testCase.getActions(), testCase, caseIndex,
+				captureDir, driver);
 
 		if (!result) {
 			Assert.fail("判断结果时出现错误");
 		}
 	}
 
-	private void runActions(List<TestAction> actions, TestCase testCase,
+	private boolean runActions(List<TestAction> actions, TestCase testCase,
 			int caseIndex, File captureDir, AppiumDriver driver) {
 		if (actions == null) {
-			return;
+			return true;
 		}
 
 		TestAction lastAction = null;
@@ -171,10 +162,13 @@ public class TestCaseRunner {
 						action.getOriginalCommand(), false);
 				ReportHelper.recordAction(failMessage, captureImage, false);
 				Assert.fail(failMessage, e);
+				return false;
 			} finally {
 				monitor.recordActionEnd(caseIndex, originalAction);
 			}
 		}
+
+		return true;
 	}
 
 	@AfterMethod
@@ -184,10 +178,13 @@ public class TestCaseRunner {
 
 	@AfterTest
 	public void afterTest(ITestContext context) throws Exception {
+		String category = context.getCurrentXmlTest().getParameter(
+				"testsuitCategory");
 		String indexText = context.getCurrentXmlTest().getParameter(
 				"testcaseIndex");
 		int caseIndex = Integer.parseInt(indexText);
-		TestCase testCase = TestContext.getInstance().getTestcase(caseIndex);
+		TestCase testCase = TestContext.getInstance().getTestcase(category,
+				caseIndex);
 		backToHomePage(caseIndex, testCase);
 	}
 
@@ -198,72 +195,39 @@ public class TestCaseRunner {
 
 	private void backToHomePage(int caseIndex, TestCase testCase) {
 		AppiumDriver driver = TestContext.getInstance().getDriver();
-		List<TestAction> rollbackActions = new ArrayList<TestAction>();
-		rollbackActions.addAll(testCase.getRollbackActions());
-		rollbackActions.addAll(TestContext.getInstance()
-				.getDefaultRollbackActions());
-		List<TestVerify> startingPageVerifies = testCase.getStartPageVerifies();
+		List<TestAction> caseRollbackActions = testCase.getRollbackActions();
+		List<TestAction> defaultRollbackActions = TestContext.getInstance()
+				.getDefaultRollbackActions();
 
 		for (int backToHomePages = 1; backToHomePages <= 2; backToHomePages++) {
-			for (TestAction action : rollbackActions) {
-				try {
-					dot();
-					AppiumHelper.performAction(driver, action,
-							AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
-				} catch (Exception e) {
-					continue;
+			for (TestAction defaultActionn : defaultRollbackActions) {
+				boolean success = true;
+				for (TestAction caseActionn : caseRollbackActions) {
+					try {
+						dot();
+						AppiumHelper.performAction(driver, caseActionn,
+								AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
+					} catch (Exception e) {
+						success = false;
+						break;
+					}
 				}
 
-				boolean result = verify(startingPageVerifies, null, driver,
-						false, AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
-				if (result) {
+				if (success) {
 					return;
+				}
+
+				try {
+					dot();
+					AppiumHelper.performAction(driver, defaultActionn,
+							AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
+				} catch (Exception e) {
+					break;
 				}
 			}
 		}
 
 		driver.resetApp();
-	}
-
-	private boolean verify(List<TestVerify> verifies, File captureDir,
-			AppiumDriver driver, boolean takeRecord, int waitSecond) {
-		for (TestVerify verify : verifies) {
-			boolean result = verify(verify, captureDir, driver, takeRecord,
-					waitSecond);
-			if (!result) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private boolean verify(TestVerify verify, File captureDir,
-			AppiumDriver driver, boolean takeRecord, int waitSecond) {
-		String verifyFile = FileNameUtil.convertStringToFileName(verify
-				.getOriginalCommand()) + ".png";
-		File captureImage = null;
-		if (takeRecord) {
-			captureImage = AppiumHelper.takeCaptureToDir(driver, captureDir,
-					verifyFile);
-		}
-
-		if (!verify.execute(driver, waitSecond)) {
-			if (takeRecord) {
-				String failMessage = getVerifyRecordText(
-						verify.getOriginalCommand(), false);
-				ReportHelper.recordAction(failMessage, captureImage, false);
-				Assert.fail(failMessage);
-			}
-			return false;
-		} else {
-			if (takeRecord) {
-				ReportHelper.recordAction(
-						getVerifyRecordText(verify.getOriginalCommand(), true),
-						captureImage, true);
-			}
-			return true;
-		}
 	}
 
 	private void configActionParameters(TestAction action, TestCase testcase) {

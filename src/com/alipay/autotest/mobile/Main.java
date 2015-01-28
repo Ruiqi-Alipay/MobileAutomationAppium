@@ -22,11 +22,11 @@ public class Main {
 
 	@SuppressWarnings("rawtypes")
 	public static void main(String[] args) {
-		String devices = CommandUtil.execCmd("adb devices");
-		if (devices.indexOf("device") == devices.lastIndexOf("device")) {
-			LogUtils.log("None android devices connected! /n" + devices);
-			return;
-		}
+//		String devices = CommandUtil.execCmd("adb devices");
+//		if (devices.indexOf("device") == devices.lastIndexOf("device")) {
+//			LogUtils.log("None android devices connected! /n" + devices);
+//			return;
+//		}
 
 		TestFileManager fileManager = TestFileManager.getInstance();
 		fileManager.clearAllReports();
@@ -34,7 +34,7 @@ public class Main {
 		TestContext context = TestContext.getInstance();
 		try {
 			LogUtils.log("Starting setup test resources..");
-			context.setupContext(args);
+			context.setupContext();
 		} catch (Exception e) {
 			LogUtils.log("Setup test context failed: " + e.toString());
 			return;
