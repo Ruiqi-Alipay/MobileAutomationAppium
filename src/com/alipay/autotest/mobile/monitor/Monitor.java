@@ -135,41 +135,44 @@ public class Monitor {
 
 		String memoInfoTotal = new ShellExecute().execute("dumpsys meminfo "
 				+ mPackageName).console.toString();
+		
+		int start = memoInfoTotal.indexOf("Dalvik Heap");
+		int end = memoInfoTotal.indexOf("Dalvik Other");
+		if (start > 0 && end > start) {
+			String[] datas = memoInfoTotal.substring(start, end).split("\\s+");
+			
+			double heapSize = Double.valueOf(mFormater.format(Double
+					.valueOf(datas[6]) / 1024));
 
-		String[] memoInfo = new ShellExecute().execute("dumpsys meminfo "
-				+ mPackageName + " | grep \"Dalvik Heap\"").console
-				.getRows("\\s{1,}");
-		double heapSize = Double.valueOf(mFormater.format(Double
-				.valueOf(memoInfo[6]) / 1024));
+			double[] networkData = retriveNetworkData();
+			double sent = networkData[0] - mNetworkData[0];
+			double rev = networkData[1] - mNetworkData[1];
 
-		double[] networkData = retriveNetworkData();
-		double sent = networkData[0] - mNetworkData[0];
-		double rev = networkData[1] - mNetworkData[1];
+			sent = round(sent, 1);
+			rev = round(rev, 1);
 
-		sent = round(sent, 1);
-		rev = round(rev, 1);
+			int cupProcent = retriveCPUUsage();
 
-		int cupProcent = retriveCPUUsage();
+			JSONObject record = new JSONObject();
+			record.put("index", index);
+			record.put("action", action);
+			record.put("heap", heapSize);
+			record.put("sent", sent);
+			record.put("reve", rev);
+			record.put("cpu", cupProcent);
 
-		JSONObject record = new JSONObject();
-		record.put("index", index);
-		record.put("action", action);
-		record.put("heap", heapSize);
-		record.put("sent", sent);
-		record.put("reve", rev);
-		record.put("cpu", cupProcent);
+			JSONObject data = new JSONObject();
+			data.put("log", mLogBuilder.toString());
+			data.put("mem", memoInfoTotal);
+			record.put("data", data);
 
-		JSONObject data = new JSONObject();
-		data.put("log", mLogBuilder.toString());
-		data.put("mem", memoInfoTotal);
-		record.put("data", data);
-
-		if (mNewStart) {
-			recordContent(mRecordFilePath, "[");
-		} else {
-			recordContent(mRecordFilePath, ",");
+			if (mNewStart) {
+				recordContent(mRecordFilePath, "[");
+			} else {
+				recordContent(mRecordFilePath, ",");
+			}
+			recordContent(mRecordFilePath, record.toString());
 		}
-		recordContent(mRecordFilePath, record.toString());
 		mNewStart = false;
 	}
 
