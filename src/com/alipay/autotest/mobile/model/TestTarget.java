@@ -80,7 +80,7 @@ public class TestTarget implements TestTargetType {
 			} else {
 				return "";
 			}
-		} else if (EDIT_TEXT.equals(type)) {
+		} else if (BUTTON.equals(type)) {
 			if (isAndroid) {
 				return "android.widget.Button";
 			} else {
