@@ -225,8 +225,7 @@ public class AppiumHelper {
 			}
 		} else if (TestActionTypes.ACTION_TYPE_TEST_VERIFY.equals(actionType)) {
 			try {
-				boolean result = hasElement(driver, new TestTarget(TestTarget.TARGET_TYPE_NAME,
-						actionParams), waitSecond);
+				boolean result = hasElement(driver, target, waitSecond);
 				if (!result) {
 					throw new VerifyFailedException(action.getOriginalCommand());
 				}

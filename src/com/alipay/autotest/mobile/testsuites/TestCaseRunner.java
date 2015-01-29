@@ -3,6 +3,7 @@ package com.alipay.autotest.mobile.testsuites;
 import io.appium.java_client.AppiumDriver;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.openqa.selenium.NoSuchElementException;
@@ -21,6 +22,7 @@ import org.testng.annotations.Test;
 import com.alipay.autotest.mobile.appium.AppiumHelper;
 import com.alipay.autotest.mobile.appium.TestContext;
 import com.alipay.autotest.mobile.model.TestAction;
+import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestCase;
 import com.alipay.autotest.mobile.monitor.Monitor;
 import com.alipay.autotest.mobile.monitor.ReportHelper;
@@ -195,17 +197,39 @@ public class TestCaseRunner {
 
 	private void backToHomePage(int caseIndex, TestCase testCase) {
 		AppiumDriver driver = TestContext.getInstance().getDriver();
-		List<TestAction> caseRollbackActions = testCase.getRollbackActions();
-		List<TestAction> defaultRollbackActions = TestContext.getInstance()
-				.getDefaultRollbackActions();
+		List<TestAction> robackActions = new ArrayList<TestAction>();
+		List<TestAction> robackVerifies = new ArrayList<TestAction>();
+		List<TestAction> rollbackActions = testCase.getRollbackActions();
+
+		for (TestAction action : rollbackActions) {
+			if (action.getType()
+					.equals(TestActionTypes.ACTION_TYPE_TEST_VERIFY)
+					|| action.getType().equals(
+							TestActionTypes.ACTION_TYPE_PIXEL_VERIFY)) {
+				robackVerifies.add(action);
+			} else {
+				robackActions.add(action);
+			}
+		}
+
+		robackActions.addAll(TestContext.getInstance()
+				.getDefaultRollbackActions());
 
 		for (int backToHomePages = 1; backToHomePages <= 2; backToHomePages++) {
-			for (TestAction defaultActionn : defaultRollbackActions) {
+			for (TestAction action : robackActions) {
+				try {
+					dot();
+					AppiumHelper.performAction(driver, action,
+							AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
+				} catch (Exception e) {
+					
+				}
+				
 				boolean success = true;
-				for (TestAction caseActionn : caseRollbackActions) {
+				for (TestAction verify : robackVerifies) {
 					try {
 						dot();
-						AppiumHelper.performAction(driver, caseActionn,
+						AppiumHelper.performAction(driver, verify,
 								AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
 					} catch (Exception e) {
 						success = false;
@@ -215,14 +239,6 @@ public class TestCaseRunner {
 
 				if (success) {
 					return;
-				}
-
-				try {
-					dot();
-					AppiumHelper.performAction(driver, defaultActionn,
-							AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
-				} catch (Exception e) {
-					break;
 				}
 			}
 		}

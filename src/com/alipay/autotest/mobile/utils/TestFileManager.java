@@ -12,8 +12,8 @@ public class TestFileManager {
 	private static TestFileManager sInstance;
 
 	// Context root
-	// public final static File ROOT = new File(System.getProperty("user.dir"));
-	public final static File ROOT = new File("C:/test_environment");
+	public final static File ROOT = new File(System.getProperty("user.dir"));
+	// public final static File ROOT = new File("C:/test_environment");
 
 	// Test verify image fileF
 	public final static File TEST_VERIFY_IMG_DIR = new File(ROOT,

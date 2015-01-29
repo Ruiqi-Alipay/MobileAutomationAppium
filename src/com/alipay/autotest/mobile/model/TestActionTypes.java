@@ -33,6 +33,6 @@ public interface TestActionTypes {
 	public final static String ACTION_TYPE_SCROLLDOWN = "向下滚动";
 	
 	
-	public final static String ACTION_TYPE_TEST_VERIFY = "";
-	public final static String ACTION_TYPE_PIXEL_VERIFY = "";
+	public final static String ACTION_TYPE_TEST_VERIFY = "文案校验";
+	public final static String ACTION_TYPE_PIXEL_VERIFY = "像素校验";
 }

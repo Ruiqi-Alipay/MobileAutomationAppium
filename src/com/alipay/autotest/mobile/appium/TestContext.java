@@ -26,7 +26,6 @@ import com.alipay.autotest.mobile.model.TestCase;
 import com.alipay.autotest.mobile.testsuites.TestCaseRunner;
 import com.alipay.autotest.mobile.utils.ApkUtil;
 import com.alipay.autotest.mobile.utils.CommandUtil;
-import com.alipay.autotest.mobile.utils.FileUtils;
 import com.alipay.autotest.mobile.utils.HttpUtils;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.TestFileManager;
@@ -39,11 +38,10 @@ public class TestContext {
 	private Map<String, List<TestCase>> mTestcaseByCategory;
 	private Map<String, TestCase> mConfigScriptMap;
 
-	private Process mAppiumProcess;
 	private AppiumDriver mAppiumDriver;
 	private String mPlatformName;
 	private String mDeviceName;
-	private String mTestAppPath;
+	private File mTestApp;
 	private String mTestAppPackage;
 	private List<String> mAppSrcPathList;
 	private List<String> mAppEmPathList;
@@ -84,7 +82,7 @@ public class TestContext {
 	}
 
 	public boolean isTestingAndroid() {
-		return SystemPropoerties.VALUE_ANDROID.equalsIgnoreCase(mPlatformName);
+		return true;// SystemPropoerties.VALUE_ANDROID.equalsIgnoreCase(mPlatformName);
 	}
 
 	public List<TestAction> getDefaultRollbackActions() {
@@ -97,38 +95,14 @@ public class TestContext {
 		int startTrtry = 3;
 		while (startTrtry > 0) {
 			try {
-				if (mAppiumProcess == null) {
-					switch (CommandUtil.getOperatingSystemType()) {
-					case CommandUtil.WINDOWS:
-						LogUtils.log("Starting server..");
-						mAppiumProcess = Runtime.getRuntime().exec(
-								"cmd /c appium");
-						LogUtils.log("Success! server running in "
-								+ mAppiumProcess.toString());
-						break;
-					case CommandUtil.MACOS:
-						break;
-					case CommandUtil.LINUX:
-						break;
-					default:
-						throw new WebDriverException(
-								"Your Operting system is not supported by this auto test framework");
-					}
-				}
-
-				LogUtils.log("Preparing server..");
-				Thread.sleep(8000);
 				LogUtils.log("Connecting to server at //127.0.0.1:4723..");
 				LogUtils.log("Caution: if a session failed to create error occurs, please try again");
 				mAppiumDriver = new SelendroidDriver(new URL(
 						"http://127.0.0.1:4723/wd/hub"), TestContext
 						.getInstance().getConfigedCapabilicities());
 				LogUtils.log("Success! server connected!");
+				mTestApp.delete();
 			} catch (Exception e1) {
-				if (mAppiumProcess == null) {
-					LogUtils.log("Error: start appium server fialed! Error: "
-							+ e1.toString());
-				}
 				if (mAppiumDriver == null) {
 					LogUtils.log("Error: connect appium server fialed! Error: "
 							+ e1.toString());
@@ -137,20 +111,20 @@ public class TestContext {
 				startTrtry--;
 			}
 
-			if (mAppiumDriver != null && mAppiumProcess != null) {
+			if (mAppiumDriver != null) {
 				break;
 			}
 		}
 
-		if (mAppiumDriver == null || mAppiumProcess == null) {
+		if (mAppiumDriver == null) {
 			throw new WebDriverException("Start appium driver failed");
 		}
 	}
 
 	public void stopAppiumDriver() {
-		if (mAppiumProcess != null) {
-			mAppiumProcess.destroy();
-			mAppiumProcess = null;
+		if (mAppiumDriver != null) {
+			mAppiumDriver.close();
+			mAppiumDriver = null;
 		}
 	}
 
@@ -162,8 +136,10 @@ public class TestContext {
 		int runtimes = 1;
 		String accountNum = null;
 		Scanner scanner = null;
+		String appPath = null;
 		try {
 			scanner = new Scanner(System.in);
+			appPath = userSelectApp(scanner);
 			scriptIds = userSelectScript(scanner);
 			runtimes = userEnterRuntimes(scanner);
 			accountNum = userEnterAccount(scanner);
@@ -173,6 +149,14 @@ public class TestContext {
 				scanner = null;
 			}
 		}
+
+		String fileName = appPath.substring(appPath.lastIndexOf("/") + 1);
+		LogUtils.log("Downloading " + fileName);
+		mTestApp = new File(TestFileManager.ENVIRONMENT_ROOT, fileName);
+		org.apache.commons.io.FileUtils.copyURLToFile(new URL(
+				"http://autotest.d10970aqcn.alipay.net/" + appPath), mTestApp);
+		// TODO: support ios
+		mTestAppPackage = ApkUtil.getPackageName(mTestApp.getAbsolutePath());
 
 		JSONObject responseRaw = fetchScriptFromServer(scriptIds);
 		JSONArray runScripts = responseRaw.getJSONArray("scripts");
@@ -202,33 +186,6 @@ public class TestContext {
 
 		// 2. parse the data
 		mPlatformName = SystemPropoerties.VALUE_ANDROID;
-		mAppSrcPathList = null;
-		mAppEmPathList = null;
-
-		// 3. find the testing app file, setup app file path and package name
-		// info
-		List<File> appFileList = new ArrayList<File>();
-		if (SystemPropoerties.VALUE_ANDROID.equalsIgnoreCase(mPlatformName)) {
-			mPlatformName = SystemPropoerties.VALUE_ANDROID;
-			FileUtils.collectFiles(TestFileManager.ROOT,
-					new FileExtensionFilter(".apk"), appFileList, false);
-		} else if (SystemPropoerties.VALUE_IOS.equalsIgnoreCase(mPlatformName)) {
-			mPlatformName = SystemPropoerties.VALUE_IOS;
-			FileUtils.collectFiles(TestFileManager.ROOT,
-					new FileExtensionFilter(".ipa"), appFileList, false);
-		} else {
-			throw new Exception("The mobile platform '" + mPlatformName
-					+ "' is not supported at this time!");
-		}
-
-		if (appFileList.size() != 1) {
-			throw new Exception(
-					"Please make sure test resource directory has only one android and ios app file each");
-		}
-
-		mTestAppPath = appFileList.get(0).getAbsolutePath();
-		// TODO: support ios
-		mTestAppPackage = ApkUtil.getPackageName(mTestAppPath);
 
 		mTestSuites = new ArrayList<XmlSuite>();
 		mTestcaseByCategory = new HashMap<String, List<TestCase>>();
@@ -241,7 +198,7 @@ public class TestContext {
 			mTestcaseByCategory.put(caseTitle, new ArrayList<TestCase>());
 			mTestSuites.add(suite);
 
-			for (int j = 1; j <= runtimes; j++) {
+			for (int j = 0; j < runtimes; j++) {
 				TestCase testCase = TestCase.parseJSON(scriptJson, accountNum,
 						serverParamMap);
 
@@ -281,7 +238,7 @@ public class TestContext {
 		capabilities.setCapability("deviceName", mDeviceName);
 		capabilities.setCapability("platformVersion", version);
 		capabilities.setCapability("newCommandTimeout", 60);
-		capabilities.setCapability("app", mTestAppPath);
+		capabilities.setCapability("app", mTestApp.getAbsolutePath());
 		capabilities.setCapability("autoLaunch", true);
 		capabilities.setCapability("orientation",
 				SystemPropoerties.VALUE_PORTRAIT);
@@ -321,7 +278,7 @@ public class TestContext {
 	}
 
 	public String getTestAppPath() {
-		return mTestAppPath;
+		return mTestApp.getAbsolutePath();
 	}
 
 	public String getTestAppPackage() {
@@ -334,6 +291,31 @@ public class TestContext {
 
 	public TestCase getTestcase(String cagetory, int index) {
 		return mTestcaseByCategory.get(cagetory).get(index);
+	}
+
+	private String userSelectApp(Scanner scanner) {
+		LogUtils.log("Loading server target apps...");
+		String responseText = HttpUtils.sendGet(
+				"http://autotest.d10970aqcn.alipay.net/autotest/api/testapp",
+				null);
+		JSONArray apps = new JSONArray(responseText);
+		for (int i = 0; i < apps.length(); i++) {
+			JSONObject app = apps.getJSONObject(i);
+			LogUtils.log((i + 1) + ".  " + app.getString("name") + " ("
+					+ app.getString("description") + ")");
+		}
+
+		while (true) {
+			LogUtils.log("Which app you want to test(enter the app index):");
+
+			String userInput = scanner.nextLine();
+			try {
+				int index = Integer.valueOf(userInput.trim()) - 1;
+				return apps.getJSONObject(index).getString("path");
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+		}
 	}
 
 	private List<String> userSelectScript(Scanner scanner) {
