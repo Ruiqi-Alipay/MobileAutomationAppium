@@ -1,5 +1,6 @@
 package com.alipay.autotest.mobile;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,7 @@ public class Main {
 
 	@SuppressWarnings("rawtypes")
 	public static void main(String[] args) {
+		System.out.println("Charset: " + Charset.defaultCharset());
 		String devices = CommandUtil.execCmd("adb devices");
 		if (devices.indexOf("device") == devices.lastIndexOf("device")) {
 			LogUtils.log("None android devices connected! /n" + devices);

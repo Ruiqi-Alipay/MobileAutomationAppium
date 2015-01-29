@@ -95,13 +95,13 @@ public class TestContext {
 		int startTrtry = 3;
 		while (startTrtry > 0) {
 			try {
+				logDivilver();
 				LogUtils.log("Connecting to server at //127.0.0.1:4723..");
 				LogUtils.log("Caution: if a session failed to create error occurs, please try again");
 				mAppiumDriver = new SelendroidDriver(new URL(
 						"http://127.0.0.1:4723/wd/hub"), TestContext
 						.getInstance().getConfigedCapabilicities());
 				LogUtils.log("Success! server connected!");
-				mTestApp.delete();
 			} catch (Exception e1) {
 				if (mAppiumDriver == null) {
 					LogUtils.log("Error: connect appium server fialed! Error: "
@@ -112,6 +112,7 @@ public class TestContext {
 			}
 
 			if (mAppiumDriver != null) {
+				mTestApp.delete();
 				break;
 			}
 		}
@@ -123,7 +124,7 @@ public class TestContext {
 
 	public void stopAppiumDriver() {
 		if (mAppiumDriver != null) {
-			mAppiumDriver.close();
+			// mAppiumDriver.close();
 			mAppiumDriver = null;
 		}
 	}
@@ -139,9 +140,13 @@ public class TestContext {
 		String appPath = null;
 		try {
 			scanner = new Scanner(System.in);
+			logDivilver();
 			appPath = userSelectApp(scanner);
+			logDivilver();
 			scriptIds = userSelectScript(scanner);
+			logDivilver();
 			runtimes = userEnterRuntimes(scanner);
+			logDivilver();
 			accountNum = userEnterAccount(scanner);
 		} finally {
 			if (scanner != null) {
@@ -429,5 +434,9 @@ public class TestContext {
 		}
 
 		return null;
+	}
+
+	private void logDivilver() {
+		LogUtils.log("=====================================================================");
 	}
 }
