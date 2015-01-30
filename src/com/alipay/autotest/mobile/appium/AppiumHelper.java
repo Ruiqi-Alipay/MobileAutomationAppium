@@ -142,7 +142,10 @@ public class AppiumHelper {
 		} else if (TestActionTypes.ACTION_TYPE_INPUT.equals(actionType)) {
 			WebElement element = findElement(driver, target, waitSecond);
 			input(driver, element, actionParams);
-			driver.hideKeyboard();
+			try {
+				driver.hideKeyboard();
+			} catch (Exception e) {
+			}
 		} else if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD.equals(actionType)
 				|| TestActionTypes.ACTION_TYPE_ALIKEYBORAD_NUM
 						.equals(actionType)) {
@@ -254,6 +257,10 @@ public class AppiumHelper {
 			TestTarget widget, int waitSecond) {
 		String locatorType = widget.getType();
 		String locatorName = widget.getElement();
+		try {
+			driver.hideKeyboard();
+		} catch (Exception e) {
+		}
 
 		for (int i = 0; i < waitSecond; i += 2) {
 			try {

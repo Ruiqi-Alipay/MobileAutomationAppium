@@ -40,7 +40,7 @@ public class TestCase implements TestCaseInterface {
 	private String mCouponAmount;
 	private String mConfigRef;
 
-	public static TestCase parseJSON(JSONObject scriptJson, String buyerId,
+	public static TestCase parseJSON(JSONObject scriptJson,
 			Map<String, String> serverparams) throws Exception {
 		Map<String, String> paramsMap = new HashMap<String, String>();
 		if (scriptJson.has(CASE_PARAMETER)) {
@@ -65,25 +65,40 @@ public class TestCase implements TestCaseInterface {
 
 		String orderRef = null;
 		int count = 1;
+		String buyerId = "2188205012137435";
 		String amount = null;
 		String couponAmount = null;
 		if (scriptJson.has(CASE_ORDER)) {
 			JSONObject order = scriptJson.getJSONObject(CASE_ORDER);
 			if (order.has(CASE_ORDER_REF)) {
-				orderRef = String.valueOf(order.get(CASE_ORDER_REF));
+				orderRef = TestAction
+						.processGloblePram(
+								String.valueOf(order.get(CASE_ORDER_REF)),
+								serverparams);
 			}
 
 			if (order.has(CASE_ORDER_AMOUNT)) {
-				amount = String.valueOf(order.get(CASE_ORDER_AMOUNT));
+				amount = TestAction.processGloblePram(
+						String.valueOf(order.get(CASE_ORDER_AMOUNT)),
+						serverparams);
 			}
 
 			if (order.has(CASE_ORDER_COUPONAMOUNT)) {
-				couponAmount = String.valueOf(order
-						.get(CASE_ORDER_COUPONAMOUNT));
+				couponAmount = TestAction.processGloblePram(
+						String.valueOf(order.get(CASE_ORDER_COUPONAMOUNT)),
+						serverparams);
 			}
 
 			if (order.has(CASE_ORDER_COUNT)) {
-				count = order.getInt(CASE_ORDER_COUNT);
+				count = Integer.valueOf(TestAction.processGloblePram(
+						String.valueOf(order.get(CASE_ORDER_COUNT)),
+						serverparams));
+			}
+
+			if (order.has(CASE_ORDER_BUYER_ID)) {
+				buyerId = TestAction.processGloblePram(
+						String.valueOf(order.get(CASE_ORDER_BUYER_ID)),
+						serverparams);
 			}
 		}
 

@@ -135,7 +135,6 @@ public class TestContext {
 
 		List<String> scriptIds = null;
 		int runtimes = 1;
-		String accountNum = null;
 		Scanner scanner = null;
 		String appPath = null;
 		try {
@@ -146,8 +145,6 @@ public class TestContext {
 			scriptIds = userSelectScript(scanner);
 			logDivilver();
 			runtimes = userEnterRuntimes(scanner);
-			logDivilver();
-			accountNum = userEnterAccount(scanner);
 		} finally {
 			if (scanner != null) {
 				scanner.close();
@@ -179,7 +176,7 @@ public class TestContext {
 		if (configs != null) {
 			for (int i = 0; i < configs.length(); i++) {
 				JSONObject config = configs.getJSONObject(i);
-				TestCase testCase = TestCase.parseJSON(config, null,
+				TestCase testCase = TestCase.parseJSON(config,
 						serverParamMap);
 				if (testCase.getName().equals("ROLLBACK_ACTIONS")) {
 					mDefaultRollbackActions.addAll(testCase.getActions());
@@ -204,7 +201,7 @@ public class TestContext {
 			mTestSuites.add(suite);
 
 			for (int j = 0; j < runtimes; j++) {
-				TestCase testCase = TestCase.parseJSON(scriptJson, accountNum,
+				TestCase testCase = TestCase.parseJSON(scriptJson,
 						serverParamMap);
 
 				XmlTest test = new XmlTest(suite);
@@ -365,22 +362,6 @@ public class TestContext {
 
 				int times = Integer.valueOf(rawText.trim());
 				return times;
-			} catch (Exception e) {
-
-			}
-		}
-	}
-
-	private String userEnterAccount(Scanner scanner) {
-		while (true) {
-			LogUtils.log("The account use to create order (default: 2188205012137435):");
-			String rawText = scanner.nextLine();
-			try {
-				if (rawText == null || rawText.length() == 0) {
-					rawText = "2188205012137435";
-				}
-
-				return rawText;
 			} catch (Exception e) {
 
 			}

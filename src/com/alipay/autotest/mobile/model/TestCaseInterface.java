@@ -37,4 +37,5 @@ public interface TestCaseInterface {
 	public final static String CASE_ORDER_AMOUNT = "amount";
 	public final static String CASE_ORDER_COUPONAMOUNT = "couponAmount";
 	public final static String CASE_ORDER_COUNT = "count";
+	public final static String CASE_ORDER_BUYER_ID = "buyerId";
 }

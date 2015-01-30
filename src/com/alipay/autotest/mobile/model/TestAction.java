@@ -61,17 +61,12 @@ public class TestAction implements TestActionInterface {
 		} else {
 			if (actionObject.has(PARAM)) {
 				actionParams = actionObject.getString(PARAM);
+				actionParams = processGloblePram(actionParams, serverPramMap);
 			}
 			if (actionObject.has(TARGET)) {
 				textTarget = actionObject.getString(TARGET);
+				textTarget = processGloblePram(textTarget, serverPramMap);
 				if (!TextUtils.isEmpty(textTarget)) {
-					if (textTarget.indexOf("{") == 0
-							&& textTarget.indexOf("}") == (textTarget.length() - 1)) {
-						String paramKey = textTarget.substring(1, textTarget.length() - 1);
-						if (serverPramMap.containsKey(paramKey)) {
-							textTarget = serverPramMap.get(paramKey);
-						}
-					}
 					target = new TestTarget(textTarget);
 				}
 			}
@@ -121,6 +116,18 @@ public class TestAction implements TestActionInterface {
 	 */
 	public String getParams() {
 		return mParams;
+	}
+	
+	public static String processGloblePram(String param, Map<String, String> serverPramMap) {
+		if (param.indexOf("{") == 0
+				&& param.indexOf("}") == (param.length() - 1)) {
+			String paramKey = param.substring(1, param.length() - 1);
+			if (serverPramMap.containsKey(paramKey)) {
+				return serverPramMap.get(paramKey);
+			}
+		}
+		
+		return param;
 	}
 
 	private static int textKeyToKeyCode(String key) throws Exception {
