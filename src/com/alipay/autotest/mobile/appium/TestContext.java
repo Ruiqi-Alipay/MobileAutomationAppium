@@ -38,6 +38,7 @@ public class TestContext {
 	private Map<String, List<TestCase>> mTestcaseByCategory;
 	private Map<String, TestCase> mConfigScriptMap;
 
+	private Process mAppiumProcess;
 	private AppiumDriver mAppiumDriver;
 	private String mPlatformName;
 	private String mDeviceName;
@@ -47,6 +48,7 @@ public class TestContext {
 	private List<String> mAppEmPathList;
 	private List<TestAction> mDefaultRollbackActions;
 	private boolean mApiUnder17 = false;
+	private TestCase mSystemtConfig;
 
 	public class FileExtensionFilter implements FileFilter {
 
@@ -89,6 +91,10 @@ public class TestContext {
 		return mDefaultRollbackActions;
 	}
 
+	public TestCase getSystemConfig() {
+		return mSystemtConfig;
+	}
+
 	public void startAppiumDriver() {
 		stopAppiumDriver();
 
@@ -96,6 +102,9 @@ public class TestContext {
 		while (startTrtry > 0) {
 			try {
 				logDivilver();
+				LogUtils.log("Starting selenium server...");
+				mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/appium.cmd");
+				Thread.sleep(8000);
 				LogUtils.log("Connecting to server at //127.0.0.1:4723..");
 				LogUtils.log("Caution: if a session failed to create error occurs, please try again");
 				mAppiumDriver = new SelendroidDriver(new URL(
@@ -111,18 +120,22 @@ public class TestContext {
 				startTrtry--;
 			}
 
-			if (mAppiumDriver != null) {
+			if (mAppiumDriver != null && mAppiumProcess != null) {
 				mTestApp.delete();
 				break;
 			}
 		}
 
-		if (mAppiumDriver == null) {
+		if (mAppiumDriver == null || mAppiumProcess == null) {
 			throw new WebDriverException("Start appium driver failed");
 		}
 	}
 
 	public void stopAppiumDriver() {
+		if (mAppiumProcess != null) {
+			mAppiumProcess.destroy();
+			mAppiumProcess = null;
+		}
 		if (mAppiumDriver != null) {
 			// mAppiumDriver.close();
 			mAppiumDriver = null;
@@ -134,6 +147,7 @@ public class TestContext {
 		System.setProperty("org.uncommons.reportng.locale", "zh_CN");
 
 		List<String> scriptIds = null;
+		JSONObject systemConfig = null;
 		int runtimes = 1;
 		Scanner scanner = null;
 		String appPath = null;
@@ -141,6 +155,8 @@ public class TestContext {
 			scanner = new Scanner(System.in);
 			logDivilver();
 			appPath = userSelectApp(scanner);
+			logDivilver();
+			systemConfig = userSelectConfig(scanner);
 			logDivilver();
 			scriptIds = userSelectScript(scanner);
 			logDivilver();
@@ -170,14 +186,17 @@ public class TestContext {
 					paramObject.getString("value"));
 		}
 
+		if (systemConfig != null) {
+			mSystemtConfig = TestCase.parseJSON(systemConfig, serverParamMap);
+		}
+
 		mConfigScriptMap = new HashMap<String, TestCase>();
 		mDefaultRollbackActions = new ArrayList<TestAction>();
 		JSONArray configs = responseRaw.getJSONArray("configs");
 		if (configs != null) {
 			for (int i = 0; i < configs.length(); i++) {
 				JSONObject config = configs.getJSONObject(i);
-				TestCase testCase = TestCase.parseJSON(config,
-						serverParamMap);
+				TestCase testCase = TestCase.parseJSON(config, serverParamMap);
 				if (testCase.getName().equals("ROLLBACK_ACTIONS")) {
 					mDefaultRollbackActions.addAll(testCase.getActions());
 				} else {
@@ -320,6 +339,37 @@ public class TestContext {
 		}
 	}
 
+	private JSONObject userSelectConfig(Scanner scanner) {
+		LogUtils.log("Loading system configs...");
+		String responseText = HttpUtils
+				.sendGet(
+						"http://autotest.d10970aqcn.alipay.net/autotest/api/sysconfiglist",
+						null);
+		JSONArray scripts = new JSONArray(responseText);
+		for (int i = 0; i < scripts.length(); i++) {
+			JSONObject script = scripts.getJSONObject(i);
+			LogUtils.log((i + 1) + ".  " + script.getString("title"));
+		}
+		LogUtils.log("0.  无");
+
+		while (true) {
+			LogUtils.log("Please enter the script serial number you want to run (split by space):");
+
+			String rawText = scanner.nextLine();
+			try {
+				int index = Integer.valueOf(rawText.trim());
+				if (index == 0) {
+					return null;
+				} else {
+					return new JSONObject(scripts.getJSONObject(index - 1)
+							.getString("content"));
+				}
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
 	private List<String> userSelectScript(Scanner scanner) {
 		LogUtils.log("Loading server scripts...");
 		String responseText = HttpUtils
@@ -353,11 +403,11 @@ public class TestContext {
 
 	private int userEnterRuntimes(Scanner scanner) {
 		while (true) {
-			LogUtils.log("How many times you want to run (default: 10):");
+			LogUtils.log("How many times you want to run (default: 1):");
 			String rawText = scanner.nextLine();
 			try {
 				if (rawText == null || rawText.length() == 0) {
-					rawText = "10";
+					rawText = "1";
 				}
 
 				int times = Integer.valueOf(rawText.trim());

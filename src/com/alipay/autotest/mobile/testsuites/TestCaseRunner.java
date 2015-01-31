@@ -74,12 +74,19 @@ public class TestCaseRunner {
 				"启动界面.png");
 		ReportHelper.recordAction(message, captureImage, true);
 
-		if (caseIndex == 0 && testCase.getConfigRef() != null) {
-			TestCase configScript = TestContext.getInstance().getConfigScript(
-					testCase.getConfigRef());
-			if (configScript != null) {
-				runActions(configScript.getActions(), configScript, caseIndex,
+		if (caseIndex == 0) {
+			TestCase systemConfig = TestContext.getInstance().getSystemConfig();
+			if (systemConfig != null) {
+				runActions(systemConfig.getActions(), systemConfig, caseIndex,
 						captureDir, driver);
+			}
+			if (testCase.getConfigRef() != null) {
+				TestCase configScript = TestContext.getInstance().getConfigScript(
+						testCase.getConfigRef());
+				if (configScript != null) {
+					runActions(configScript.getActions(), configScript, caseIndex,
+							captureDir, driver);
+				}	
 			}
 		}
 		result = runActions(testCase.getActions(), testCase, caseIndex,
