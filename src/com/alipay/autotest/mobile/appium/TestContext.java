@@ -103,7 +103,13 @@ public class TestContext {
 			try {
 				logDivilver();
 				LogUtils.log("Starting selenium server...");
-				mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/appium.cmd");
+				if (CommandUtil.getOperatingSystemType() == CommandUtil.WINDOWS) {
+					LogUtils.log("Testing on Windwos");
+					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/appium.cmd");
+				} else {
+					LogUtils.log("Testing on Mac OS");
+					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/bin/node " + TestFileManager.ENVIRONMENT_ROOT + "/nodejs/lib/node_modules/appium/bin/appium.js");
+				}
 				Thread.sleep(8000);
 				LogUtils.log("Connecting to server at //127.0.0.1:4723..");
 				LogUtils.log("Caution: if a session failed to create error occurs, please try again");
@@ -224,7 +230,7 @@ public class TestContext {
 						serverParamMap);
 
 				XmlTest test = new XmlTest(suite);
-				test.setName(caseTitle + "-" + j);
+				test.setName(caseTitle + "-" + (j + 1));
 				List<XmlClass> classes = new ArrayList<XmlClass>();
 				classes.add(new XmlClass(TestCaseRunner.class));
 				test.setXmlClasses(classes);

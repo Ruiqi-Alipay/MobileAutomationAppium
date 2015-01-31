@@ -11,21 +11,12 @@ public class TestFileManager {
 
 	private static TestFileManager sInstance;
 
-	// Context root
-	public final static File ROOT = new File(System.getProperty("user.dir"));
-	// public final static File ROOT = new File("C:/test_environment");
-
-	// Test verify image fileF
-	public final static File TEST_VERIFY_IMG_DIR = new File(ROOT,
-			"/verify_image");
-
 	// Report root directory
-	public final static File ENVIRONMENT_ROOT = new File(ROOT, "environment");
-	public final static File REPORT_ROOT = new File(ROOT, "environment/html");
-
-	// External resources
-	public final static File EXTERNAL_RES_DIR = new File(ROOT, "/lib");
-
+	public final static File ENVIRONMENT_ROOT = new File(System.getenv("TEST_ROOT"));
+	public final static File REPORT_ROOT = new File(ENVIRONMENT_ROOT, "html");
+	public final static File TEST_VERIFY_IMG_DIR = new File(ENVIRONMENT_ROOT,
+			"/verify_image");
+	
 	public static TestFileManager getInstance() {
 		if (sInstance == null) {
 			sInstance = new TestFileManager();
@@ -43,7 +34,7 @@ public class TestFileManager {
 			REPORT_ROOT.mkdirs();
 		}
 
-		FileUtils.copyTree(new File(EXTERNAL_RES_DIR, "lightbox"), REPORT_ROOT);
+		// FileUtils.copyTree(new File(EXTERNAL_RES_DIR, "lightbox"), REPORT_ROOT);
 	}
 
 	public File getVerityImageFile(String verifyFileName) {
