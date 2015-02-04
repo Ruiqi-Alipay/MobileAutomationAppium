@@ -104,10 +104,8 @@ public class TestContext {
 				logDivilver();
 				LogUtils.log("Starting selenium server...");
 				if (CommandUtil.getOperatingSystemType() == CommandUtil.WINDOWS) {
-					LogUtils.log("Testing on Windwos");
 					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/appium.cmd");
 				} else {
-					LogUtils.log("Testing on Mac OS");
 					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/bin/node " + TestFileManager.ENVIRONMENT_ROOT + "/nodejs/lib/node_modules/appium/bin/appium.js");
 				}
 				Thread.sleep(8000);
@@ -356,13 +354,16 @@ public class TestContext {
 			JSONObject script = scripts.getJSONObject(i);
 			LogUtils.log((i + 1) + ".  " + script.getString("title"));
 		}
-		LogUtils.log("0.  无");
+		LogUtils.log("0.  无配置");
 
 		while (true) {
-			LogUtils.log("Please enter the script serial number you want to run (split by space):");
+			LogUtils.log("Please enter the configure script serial number(default none):");
 
 			String rawText = scanner.nextLine();
 			try {
+				if (rawText == null || rawText.isEmpty()) {
+					rawText = "0";
+				}
 				int index = Integer.valueOf(rawText.trim());
 				if (index == 0) {
 					return null;

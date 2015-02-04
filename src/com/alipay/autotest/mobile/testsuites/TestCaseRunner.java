@@ -37,7 +37,7 @@ import com.alipay.autotest.mobile.utils.TestFileManager;
  */
 public class TestCaseRunner {
 
-	private static final int ACTION_RETRY = 3;
+	private static final int ACTION_RETRY = 2;
 
 	@BeforeSuite(alwaysRun = true)
 	public void beforeSuite(ITestContext context) throws Exception {
@@ -135,9 +135,9 @@ public class TestCaseRunner {
 					} catch (NoSuchElementException noneElement) {
 						LogUtils.log("Element not found: "
 								+ noneElement.getMessage());
-						if (lastAction != null) {
+						if (lastAction != null && retry != ACTION_RETRY) {
 							try {
-								LogUtils.log("Retry last action: "
+								LogUtils.log("Retry last action (" + retry + ") : "
 										+ lastAction.getOriginalCommand());
 								AppiumHelper.performAction(driver, lastAction,
 										1);
