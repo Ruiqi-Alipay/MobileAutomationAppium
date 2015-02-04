@@ -26,6 +26,7 @@ import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestCase;
 import com.alipay.autotest.mobile.monitor.Monitor;
 import com.alipay.autotest.mobile.monitor.ReportHelper;
+import com.alipay.autotest.mobile.utils.AliElementNotFoundException;
 import com.alipay.autotest.mobile.utils.FileNameUtil;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.TestFileManager;
@@ -132,7 +133,7 @@ public class TestCaseRunner {
 								captureImage, true);
 						lastAction = action;
 						break;
-					} catch (NoSuchElementException noneElement) {
+					} catch (AliElementNotFoundException noneElement) {
 						LogUtils.log("Element not found: "
 								+ noneElement.getMessage());
 						if (lastAction != null && retry != ACTION_RETRY) {

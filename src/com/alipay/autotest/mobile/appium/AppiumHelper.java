@@ -22,6 +22,7 @@ import org.openqa.selenium.WebElement;
 import com.alipay.autotest.mobile.model.TestAction;
 import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestTarget;
+import com.alipay.autotest.mobile.utils.AliElementNotFoundException;
 import com.alipay.autotest.mobile.utils.AliKeyboardManager;
 import com.alipay.autotest.mobile.utils.CommandUtil;
 import com.alipay.autotest.mobile.utils.ImageUtils;
@@ -114,7 +115,7 @@ public class AppiumHelper {
 	 * @throws VerifyFailedException 
 	 */
 	public static void performAction(AppiumDriver driver, TestAction action,
-			int waitSecond) throws NoSuchElementException, VerifyFailedException {
+			int waitSecond) throws AliElementNotFoundException, VerifyFailedException {
 		LogUtils.log("Perform Action: " + action.getOriginalCommand());
 		TestTarget target = action.getTestTarget();
 		String actionType = action.getType();
@@ -250,11 +251,15 @@ public class AppiumHelper {
 
 	public static boolean hasElement(AppiumDriver driver, TestTarget widget,
 			int waitSecond) {
-		return findElement(driver, widget, waitSecond) != null;
+		try {
+			return findElement(driver, widget, waitSecond) != null;
+		} catch (AliElementNotFoundException e) {
+			return false;
+		}
 	}
 
 	private static WebElement findElement(AppiumDriver driver,
-			TestTarget widget, int waitSecond) {
+			TestTarget widget, int waitSecond) throws AliElementNotFoundException {
 		String locatorType = widget.getType();
 		String locatorName = widget.getElement();
 		try {
@@ -279,7 +284,7 @@ public class AppiumHelper {
 									return element;
 								}
 							} catch (NoSuchElementException e) {
-
+								
 							}
 						}
 						LogUtils.log("Finding element: " + locatorName);
@@ -309,8 +314,10 @@ public class AppiumHelper {
 
 			sleepInMillionsecond(2000);
 		}
+		
+		LogUtils.log("Throw exception!!!");
 
-		throw new NoSuchElementException("Type: " + locatorType + "; Name: "
+		throw new AliElementNotFoundException("Type: " + locatorType + "; Name: "
 				+ locatorName);
 	}
 
