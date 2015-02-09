@@ -8,8 +8,8 @@ import org.testng.TestNG;
 import org.uncommons.reportng.HTMLReporter;
 
 import com.alipay.autotest.mobile.appium.TestContext;
-import com.alipay.autotest.mobile.monitor.Monitor;
-import com.alipay.autotest.mobile.utils.CommandUtil;
+import com.alipay.autotest.mobile.monitor.MonitorFactory;
+import com.alipay.autotest.mobile.monitor.MonitorInterface;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.TestFileManager;
 
@@ -22,12 +22,6 @@ public class Main {
 
 	@SuppressWarnings("rawtypes")
 	public static void main(String[] args) {
-		String devices = CommandUtil.execCmd("adb devices");
-		if (devices.indexOf("device") == devices.lastIndexOf("device")) {
-			LogUtils.log("None android devices connected! /n" + devices);
-			return;
-		}
-
 		TestFileManager fileManager = TestFileManager.getInstance();
 		fileManager.clearAllReports();
 
@@ -50,13 +44,17 @@ public class Main {
 			public void onExecutionStart() {
 				LogUtils.log("Starting test evnernment, this may take a few seconds..");
 				TestContext.getInstance().startAppiumDriver();
-				Monitor.getInstance().startRecording();
+				MonitorFactory.getInstance(
+						TestContext.getInstance().getPlatformName())
+						.startRecording();
 			}
 
 			@Override
 			public void onExecutionFinish() {
 				TestContext.getInstance().stopAppiumDriver();
-				Monitor monitor = Monitor.getInstance();
+				MonitorInterface monitor = MonitorFactory
+						.getInstance(TestContext.getInstance()
+								.getPlatformName());
 				monitor.finishRecording();
 				monitor.generateReport();
 			}

@@ -33,8 +33,6 @@ public class TestFileManager {
 		if (!REPORT_ROOT.exists()) {
 			REPORT_ROOT.mkdirs();
 		}
-
-		// FileUtils.copyTree(new File(EXTERNAL_RES_DIR, "lightbox"), REPORT_ROOT);
 	}
 
 	public File getVerityImageFile(String verifyFileName) {

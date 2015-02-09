@@ -1,0 +1,25 @@
+28:10:915 INFO ApplicationStore.<init>  App archive folder:/Users/ruiqili/MobileAutomationAppium/applications
+28:11:213 FINE IOSServer.p  version:663b7cc0a7a48ff629b1bcb39bbd78aed1c1e560
+28:11:213 FINE IOSServer.p  Beta features enabled (enabled by -real flag): false
+28:11:214 FINE IOSServer.p  Simulator enabled : false
+28:11:214 FINE IOSServer.p  Inspector: http://0.0.0.0:5555/inspector/
+28:11:214 FINE IOSServer.p  Tests can access the server at http://0.0.0.0:5555/wd/hub
+28:11:214 FINE IOSServer.p  Server status: http://0.0.0.0:5555/wd/hub/status
+28:11:214 FINE IOSServer.p  Connected devices: http://0.0.0.0:5555/wd/hub/devices/all
+28:11:215 FINE IOSServer.p  Applications: http://0.0.0.0:5555/wd/hub/applications/all
+28:11:215 FINE IOSServer.p  Capabilities: http://0.0.0.0:5555/wd/hub/capabilities/all
+28:11:215 FINE IOSServer.p  Monitoring '/Users/ruiqili/MobileAutomationAppium/applications' for new applications
+28:11:215 FINE IOSServer.p  Archived apps: /Users/ruiqili/MobileAutomationAppium/applications
+28:11:215 FINE IOSServer.p  Build info: ios-driver 0.6.6-SNAPSHOT (built:20141009-1559,sha:663b7cc0a7a48ff629b1bcb39bbd78aed1c1e560)
+28:11:216 FINE IOSServer.p  Running on: Mac OS X 10.10 (x86_64)
+28:11:216 FINE IOSServer.p  Using java: 1.7.0_71
+28:11:216 FINE IOSServer.p  Applications :
+28:11:216 FINE IOSServer.p  	CFBundleName=AliSDKDemo,CFBundleVersion=2.2.2,/Users/ruiqili/Downloads/AliSDKDemo.app
+28:26:214 INFO NewSessionNHandler.safeStart  The server cannot run Capabilities [{platformVersion=8.1, platformName=iOS, simulator=true, CFBundleName=AliSDKDemo, locale=en_GB, timeHack=false, device=iphone, language=en, instruments=true}] at the moment.{platformVersion=8.1, platformName=iOS, simulator=true, timeHack=false, locale=en_GB, CFBundleName=AliSDKDemo, device=iphone, language=en, instruments=true} no devices available.
+    Known devices: []
+Build info: version: 'unknown', revision: 'unknown', time: 'unknown'
+System info: host: 'RUIQIs-MacBook-Pro.local', ip: '172.16.240.1', os.name: 'Mac OS X', os.arch: 'x86_64', os.version: '10.10', java.version: '1.7.0_71'
+Driver info: driver.version: unknown
+Build info: version: 'unknown', revision: 'unknown', time: 'unknown'
+System info: host: 'RUIQIs-MacBook-Pro.local', ip: '172.16.240.1', os.name: 'Mac OS X', os.arch: 'x86_64', os.version: '10.10', java.version: '1.7.0_71'
+Driver info: driver.version: unknown

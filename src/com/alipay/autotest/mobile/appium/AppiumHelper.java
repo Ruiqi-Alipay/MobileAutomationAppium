@@ -9,6 +9,7 @@ import io.appium.java_client.AppiumDriver;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -24,11 +25,8 @@ import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestTarget;
 import com.alipay.autotest.mobile.utils.AliElementNotFoundException;
 import com.alipay.autotest.mobile.utils.AliKeyboardManager;
-import com.alipay.autotest.mobile.utils.CommandUtil;
-import com.alipay.autotest.mobile.utils.ImageUtils;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.StringUtil;
-import com.alipay.autotest.mobile.utils.TestFileManager;
 import com.alipay.autotest.mobile.utils.TextUtils;
 
 /**
@@ -92,16 +90,20 @@ public class AppiumHelper {
 		element.click();
 		sleepInMillionsecond(200);
 
-		for (int i = 0; i < WEB_DRIVER_RETRY_COUNT; i++) {
-			String elementText = element.getText();
-			if (TextUtils.isEmpty(elementText)
-					|| !text.replaceAll(" ", "").equals(
-							elementText.replaceAll(" ", ""))) {
-				CommandUtil.execCmd("adb shell input text " + text);
-				sleepInMillionsecond(200);
-			} else {
-				return;
+		if (TestContext.getInstance().isTestingAndroid()) {
+			for (int i = 0; i < WEB_DRIVER_RETRY_COUNT; i++) {
+				String elementText = element.getText();
+				if (TextUtils.isEmpty(elementText)
+						|| !text.replaceAll(" ", "").equals(
+								elementText.replaceAll(" ", ""))) {
+					element.sendKeys(text);
+					sleepInMillionsecond(200);
+				} else {
+					return;
+				}
 			}
+		} else {
+			element.sendKeys(text);
 		}
 	}
 
@@ -112,10 +114,11 @@ public class AppiumHelper {
 	 *            Appium driver
 	 * @param action
 	 *            click/input/clear/scroll, etc
-	 * @throws VerifyFailedException 
+	 * @throws VerifyFailedException
 	 */
 	public static void performAction(AppiumDriver driver, TestAction action,
-			int waitSecond) throws AliElementNotFoundException, VerifyFailedException {
+			int waitSecond) throws AliElementNotFoundException,
+			VerifyFailedException {
 		LogUtils.log("Perform Action: " + action.getOriginalCommand());
 		TestTarget target = action.getTestTarget();
 		String actionType = action.getType();
@@ -142,6 +145,7 @@ public class AppiumHelper {
 			element.click();
 		} else if (TestActionTypes.ACTION_TYPE_INPUT.equals(actionType)) {
 			WebElement element = findElement(driver, target, waitSecond);
+
 			input(driver, element, actionParams);
 			try {
 				driver.hideKeyboard();
@@ -150,29 +154,30 @@ public class AppiumHelper {
 		} else if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD.equals(actionType)
 				|| TestActionTypes.ACTION_TYPE_ALIKEYBORAD_NUM
 						.equals(actionType)) {
-			if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD.equals(actionType)) {
-				findElement(driver, target, waitSecond);
-			}
-
-			AliKeyboardManager keyboardManager = AliKeyboardManager
-					.getInstance(driver);
-			String[] passwordArray = actionParams.split("");
-			for (int i = 0; i < passwordArray.length; i++) {
-				String oneByOne = passwordArray[i];
-				if (!TextUtils.isEmpty(oneByOne)) {
-					if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD
-							.equals(actionType)) {
-						keyboardManager.keyIn(oneByOne, driver);
-					} else {
-						keyboardManager.passwordIn(oneByOne, driver);
-						sleepInMillionsecond(1000);
+			sleepInMillionsecond(1000);
+			if (TestContext.getInstance().isTestingAndroid()) {
+				AliKeyboardManager keyboardManager = AliKeyboardManager
+						.getInstance(driver);
+				String[] passwordArray = actionParams.split("");
+				for (int i = 0; i < passwordArray.length; i++) {
+					String oneByOne = passwordArray[i];
+					if (!TextUtils.isEmpty(oneByOne)) {
+						if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD
+								.equals(actionType)) {
+							keyboardManager.keyIn(oneByOne, driver);
+						} else {
+							keyboardManager.passwordIn(oneByOne, driver);
+							sleepInMillionsecond(1000);
+						}
 					}
 				}
-			}
-			if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD.equals(actionType)) {
-				keyboardManager.resetKeyboard(driver);
+				if (TestActionTypes.ACTION_TYPE_ALIKEYBORAD.equals(actionType)) {
+					keyboardManager.resetKeyboard(driver);
+				} else {
+					keyboardManager.passwordIn("ok", driver);
+				}	
 			} else {
-				keyboardManager.passwordIn("ok", driver);
+				driver.getKeyboard().sendKeys(actionParams);
 			}
 		} else if (TestActionTypes.ACTION_TYPE_CLEAR.equals(actionType)) {
 			WebElement element = findElement(driver, target, waitSecond);
@@ -181,7 +186,9 @@ public class AppiumHelper {
 			try {
 				findElement(driver, target, waitSecond);
 				List<WebElement> elements = driver
-						.findElementsByClassName("android.widget.EditText");
+						.findElementsByClassName(TestContext.getInstance()
+								.isTestingAndroid() ? "android.widget.EditText"
+								: "UIATextField");
 
 				for (int i = 0; i < WEB_DRIVER_RETRY_COUNT; i++) {
 					if (elements != null && !elements.isEmpty()) {
@@ -189,9 +196,11 @@ public class AppiumHelper {
 						for (WebElement element : elements) {
 							element.clear();
 
-							if (element.getText() != null
-									&& element.getText().length() > 10) {
-								clearSuccess = false;
+							if (TestContext.getInstance().isTestingAndroid()) {
+								String text = element.getText();
+								if (text != null && text.length() > 10) {
+									clearSuccess = false;
+								}
 							}
 						}
 
@@ -237,15 +246,15 @@ public class AppiumHelper {
 				throw new VerifyFailedException(action.getOriginalCommand());
 			}
 		} else if (TestActionTypes.ACTION_TYPE_PIXEL_VERIFY.equals(actionType)) {
-//			try {
-//				File currentActivity = AppiumHelper.takeTempCapture(driver);
-//				float percent = StringUtil.strToFloat(mVerifyParams, 0.8F);
-//				return ImageUtils.sameAs(TestFileManager.getInstance()
-//						.getVerityImageFile(mVerifyElement), currentActivity,
-//						percent);
-//			} catch (Exception e) {
-//				return false;
-//			}
+			// try {
+			// File currentActivity = AppiumHelper.takeTempCapture(driver);
+			// float percent = StringUtil.strToFloat(mVerifyParams, 0.8F);
+			// return ImageUtils.sameAs(TestFileManager.getInstance()
+			// .getVerityImageFile(mVerifyElement), currentActivity,
+			// percent);
+			// } catch (Exception e) {
+			// return false;
+			// }
 		}
 	}
 
@@ -259,7 +268,8 @@ public class AppiumHelper {
 	}
 
 	private static WebElement findElement(AppiumDriver driver,
-			TestTarget widget, int waitSecond) throws AliElementNotFoundException {
+			TestTarget widget, int waitSecond)
+			throws AliElementNotFoundException {
 		String locatorType = widget.getType();
 		String locatorName = widget.getElement();
 		try {
@@ -284,7 +294,7 @@ public class AppiumHelper {
 									return element;
 								}
 							} catch (NoSuchElementException e) {
-								
+
 							}
 						}
 						LogUtils.log("Finding element: " + locatorName);
@@ -304,8 +314,23 @@ public class AppiumHelper {
 							dividerIndex + 1, locatorName.length() - 1));
 					List<WebElement> elements = driver
 							.findElementsByClassName(className);
+		            
 					if (elements != null && elements.size() >= index) {
-						return elements.get(index - 1);
+						if (TestContext.getInstance().isTestingAndroid()) {
+							return elements.get(index - 1);
+						} else {
+							List<WebElement> realElements = new ArrayList<WebElement>();
+							for (int x = 0; x < elements.size(); x+=2) {
+								try {
+									WebElement element = elements.get(x);
+									element.sendKeys("");
+									realElements.add(element);
+								} catch (Exception e) {
+									LogUtils.log(e.toString());
+								}
+							}
+							return realElements.get(index - 1);
+						}
 					}
 				}
 			} catch (NoSuchElementException e) {
@@ -314,11 +339,11 @@ public class AppiumHelper {
 
 			sleepInMillionsecond(2000);
 		}
-		
+
 		LogUtils.log("Throw exception!!!");
 
-		throw new AliElementNotFoundException("Type: " + locatorType + "; Name: "
-				+ locatorName);
+		throw new AliElementNotFoundException("Type: " + locatorType
+				+ "; Name: " + locatorName);
 	}
 
 	private static void sleepInMillionsecond(int second) {

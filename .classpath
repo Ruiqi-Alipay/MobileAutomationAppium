@@ -3,13 +3,13 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="lib" path="libs/jarchivelib-0.7.0.jar"/>
-	<classpathentry kind="lib" path="libs/java-client-2.1.0.jar"/>
+	<classpathentry kind="lib" path="libs/java-client-2.1.0.jar" sourcepath="/Users/ruiqili/.m2/repository/io/appium/java-client/2.1.0/java-client-2.1.0-sources.jar"/>
 	<classpathentry kind="lib" path="libs/reportng-1.1.4.jar"/>
 	<classpathentry kind="lib" path="libs/selenium-java-2.44.0.jar"/>
 	<classpathentry kind="lib" path="libs/testng-6.8.17.jar"/>
 	<classpathentry kind="lib" path="libs/velocity-1.7.jar"/>
 	<classpathentry kind="lib" path="libs/selenium-api-2.44.0.jar"/>
-	<classpathentry kind="lib" path="libs/selenium-remote-driver-2.44.0.jar"/>
+	<classpathentry kind="lib" path="libs/selenium-remote-driver-2.44.0.jar" sourcepath="/Users/ruiqili/.m2/repository/org/seleniumhq/selenium/selenium-remote-driver/2.44.0/selenium-remote-driver-2.44.0-sources.jar"/>
 	<classpathentry kind="lib" path="libs/thumbnailator-0.4.8.jar"/>
 	<classpathentry kind="lib" path="libs/AXMLPrinter.jar"/>
 	<classpathentry kind="lib" path="libs/commons-io-2.4.jar"/>
@@ -17,7 +17,7 @@
 	<classpathentry kind="lib" path="libs/jcommander-1.47.jar"/>
 	<classpathentry kind="lib" path="libs/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="lib" path="libs/commons-lang-2.6.jar"/>
-	<classpathentry kind="lib" path="libs/guava-17.0.jar"/>
+	<classpathentry kind="lib" path="libs/guava-17.0.jar" sourcepath="/Users/ruiqili/.m2/repository/com/google/guava/guava/17.0/guava-17.0-sources.jar"/>
 	<classpathentry kind="lib" path="libs/httpclient-4.3.3.jar"/>
 	<classpathentry kind="lib" path="libs/httpcore-4.3.2.jar"/>
 	<classpathentry kind="lib" path="libs/gson-2.2.4.jar"/>
@@ -26,5 +26,9 @@
 	<classpathentry kind="lib" path="libs/commons-compress-1.9.jar"/>
 	<classpathentry kind="lib" path="libs/httpmime-4.4-beta1.jar"/>
 	<classpathentry kind="lib" path="libs/json-20131018.jar"/>
+	<classpathentry kind="lib" path="libs/imapi-common-service-util-1.0.0.20130911.jar"/>
+	<classpathentry kind="lib" path="libs/commons-httpclient-3.1.jar"/>
+	<classpathentry kind="lib" path="libs/alipay-common-lang-2.0.9.jar"/>
+	<classpathentry kind="lib" path="libs/ios-server-standalone-0.6.6-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

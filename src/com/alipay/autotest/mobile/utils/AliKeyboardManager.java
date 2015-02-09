@@ -1,11 +1,12 @@
 package com.alipay.autotest.mobile.utils;
 
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.ios.IOSDriver;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.alipay.autotest.mobile.appium.SelendroidDriver;
+import com.alipay.autotest.mobile.appium.LocalAndroidDriver;
 import com.alipay.autotest.mobile.appium.TestContext;
 
 public class AliKeyboardManager {
@@ -249,13 +250,18 @@ public class AliKeyboardManager {
 	}
 
 	private void tap(AppiumDriver driver, int x, int y) {
-		if (TestContext.getInstance().isAndroidApiUnder17()) {
-			SelendroidDriver selenDriver = (SelendroidDriver) driver;
-			selenDriver.touch.down(x, y);
-			sleepInMillionsecond(50);
-			selenDriver.touch.up(x, y);
+		if (driver instanceof LocalAndroidDriver) {
+			LocalAndroidDriver selenDriver = (LocalAndroidDriver) driver;
+			if (TestContext.getInstance().isAndroidApiUnder17()) {
+				selenDriver.touch.down(x, y);
+				sleepInMillionsecond(50);
+				selenDriver.touch.up(x, y);
+			} else {
+				selenDriver.tap(1, x, y, 1);
+			}
 		} else {
-			driver.tap(1, x, y, 1);
+			IOSDriver isoDriver = (IOSDriver) driver;
+			isoDriver.tap(1, x, y, 1);
 		}
 	}
 

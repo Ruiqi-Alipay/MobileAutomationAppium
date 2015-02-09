@@ -16,4 +16,9 @@ public class GZipUtils {
 		archiver.create(name, destination, source);
 	}
 
+	public static void unZip(File source, File destination)
+			throws IOException, IllegalArgumentException {
+		Archiver archiver = ArchiverFactory.createArchiver("zip");
+		archiver.extract(source, destination);
+	}
 }

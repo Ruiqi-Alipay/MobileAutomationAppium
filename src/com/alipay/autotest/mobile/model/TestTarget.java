@@ -66,7 +66,7 @@ public class TestTarget implements TestTargetType {
 			if (isAndroid) {
 				return "android.widget.EditText";
 			} else {
-				return "";
+				return "UIATextField";
 			}
 		} else if (CHECKBOX.equals(type)) {
 			if (isAndroid) {
@@ -84,7 +84,7 @@ public class TestTarget implements TestTargetType {
 			if (isAndroid) {
 				return "android.widget.Button";
 			} else {
-				return "";
+				return "UIAButton";
 			}
 		} else if (IMAGE.equals(type)) {
 			if (isAndroid) {

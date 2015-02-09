@@ -1,6 +1,7 @@
 package com.alipay.autotest.mobile.appium;
 
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.ios.IOSDriver;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -19,6 +20,7 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import org.testng.xml.XmlClass;
 import org.testng.xml.XmlSuite;
 import org.testng.xml.XmlTest;
+import org.uiautomation.ios.IOSCapabilities;
 
 import com.alipay.autotest.mobile.SystemPropoerties;
 import com.alipay.autotest.mobile.model.TestAction;
@@ -26,6 +28,7 @@ import com.alipay.autotest.mobile.model.TestCase;
 import com.alipay.autotest.mobile.testsuites.TestCaseRunner;
 import com.alipay.autotest.mobile.utils.ApkUtil;
 import com.alipay.autotest.mobile.utils.CommandUtil;
+import com.alipay.autotest.mobile.utils.GZipUtils;
 import com.alipay.autotest.mobile.utils.HttpUtils;
 import com.alipay.autotest.mobile.utils.LogUtils;
 import com.alipay.autotest.mobile.utils.TestFileManager;
@@ -39,9 +42,10 @@ public class TestContext {
 	private Map<String, TestCase> mConfigScriptMap;
 
 	private Process mAppiumProcess;
-	private AppiumDriver mAppiumDriver;
+	private AppiumDriver mWebDriver;
 	private String mPlatformName;
-	private String mDeviceName;
+	private String mIOSVersion;
+	private String mIOSDevice;
 	private File mTestApp;
 	private String mTestAppPackage;
 	private List<String> mAppSrcPathList;
@@ -84,7 +88,11 @@ public class TestContext {
 	}
 
 	public boolean isTestingAndroid() {
-		return true;// SystemPropoerties.VALUE_ANDROID.equalsIgnoreCase(mPlatformName);
+		return SystemPropoerties.VALUE_ANDROID.equalsIgnoreCase(mPlatformName);
+	}
+
+	public String getPlatformName() {
+		return mPlatformName;
 	}
 
 	public List<TestAction> getDefaultRollbackActions() {
@@ -102,21 +110,38 @@ public class TestContext {
 		while (startTrtry > 0) {
 			try {
 				logDivilver();
-				LogUtils.log("Starting selenium server...");
-				if (CommandUtil.getOperatingSystemType() == CommandUtil.WINDOWS) {
-					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/appium.cmd");
-				} else {
-					mAppiumProcess = Runtime.getRuntime().exec(TestFileManager.ENVIRONMENT_ROOT + "/nodejs/bin/node " + TestFileManager.ENVIRONMENT_ROOT + "/nodejs/lib/node_modules/appium/bin/appium.js");
+				if (mAppiumProcess == null) {
+					LogUtils.log("Starting selenium server...");
+					if (CommandUtil.getOperatingSystemType() == CommandUtil.WINDOWS) {
+						mAppiumProcess = Runtime.getRuntime().exec(
+								TestFileManager.ENVIRONMENT_ROOT
+										+ "/nodejs/appium.cmd");
+					} else {
+						String command = "java -jar "
+								+ TestFileManager.ENVIRONMENT_ROOT
+								+ "/ios-server-0.6.6.jar -aut "
+								+ TestContext.getInstance().getTestAppPath()
+								+ " -port 5555";
+						mAppiumProcess = Runtime.getRuntime().exec(command);
+					}
+					Thread.sleep(8000);
 				}
-				Thread.sleep(8000);
-				LogUtils.log("Connecting to server at //127.0.0.1:4723..");
+				LogUtils.log("Connecting to server...");
 				LogUtils.log("Caution: if a session failed to create error occurs, please try again");
-				mAppiumDriver = new SelendroidDriver(new URL(
-						"http://127.0.0.1:4723/wd/hub"), TestContext
-						.getInstance().getConfigedCapabilicities());
+
+				if (TestContext.getInstance().isTestingAndroid()) {
+					mWebDriver = new LocalAndroidDriver(new URL(
+							"http://127.0.0.1:4723/wd/hub"),
+							getCapabilicities());
+				} else {
+					mWebDriver = new IOSDriver(new URL(
+							"http://127.0.0.1:5555/wd/hub"),
+							getCapabilicities());
+				}
+
 				LogUtils.log("Success! server connected!");
 			} catch (Exception e1) {
-				if (mAppiumDriver == null) {
+				if (mWebDriver == null) {
 					LogUtils.log("Error: connect appium server fialed! Error: "
 							+ e1.toString());
 				}
@@ -124,13 +149,13 @@ public class TestContext {
 				startTrtry--;
 			}
 
-			if (mAppiumDriver != null && mAppiumProcess != null) {
+			if (mWebDriver != null) {
 				mTestApp.delete();
 				break;
 			}
 		}
 
-		if (mAppiumDriver == null || mAppiumProcess == null) {
+		if (mWebDriver == null) {
 			throw new WebDriverException("Start appium driver failed");
 		}
 	}
@@ -140,9 +165,9 @@ public class TestContext {
 			mAppiumProcess.destroy();
 			mAppiumProcess = null;
 		}
-		if (mAppiumDriver != null) {
+		if (mWebDriver != null) {
 			// mAppiumDriver.close();
-			mAppiumDriver = null;
+			mWebDriver = null;
 		}
 	}
 
@@ -158,7 +183,15 @@ public class TestContext {
 		try {
 			scanner = new Scanner(System.in);
 			logDivilver();
-			appPath = userSelectApp(scanner);
+			mPlatformName = userSelectPlatform(scanner);
+			if (SystemPropoerties.VALUE_IOS.equals(mPlatformName)) {
+				logDivilver();
+				mIOSDevice = userSelectIOSDevice(scanner);
+				logDivilver();
+				mIOSVersion = userSelectIOSVersion(scanner);
+			}
+			logDivilver();
+			appPath = userSelectApp(scanner, mPlatformName);
 			logDivilver();
 			systemConfig = userSelectConfig(scanner);
 			logDivilver();
@@ -177,8 +210,15 @@ public class TestContext {
 		mTestApp = new File(TestFileManager.ENVIRONMENT_ROOT, fileName);
 		org.apache.commons.io.FileUtils.copyURLToFile(new URL(
 				"http://autotest.d10970aqcn.alipay.net/" + appPath), mTestApp);
-		// TODO: support ios
-		mTestAppPackage = ApkUtil.getPackageName(mTestApp.getAbsolutePath());
+		if (SystemPropoerties.VALUE_ANDROID.equals(mPlatformName)) {
+			mTestAppPackage = ApkUtil
+					.getPackageName(mTestApp.getAbsolutePath());
+		} else {
+			String unzipPath = mTestApp.getAbsolutePath();
+			String zipedPath = unzipPath.substring(0, unzipPath.indexOf(".zip"));
+			GZipUtils.unZip(mTestApp, TestFileManager.ENVIRONMENT_ROOT);
+			mTestApp = new File(zipedPath);
+		}
 
 		JSONObject responseRaw = fetchScriptFromServer(scriptIds);
 		JSONArray runScripts = responseRaw.getJSONArray("scripts");
@@ -208,9 +248,6 @@ public class TestContext {
 				}
 			}
 		}
-
-		// 2. parse the data
-		mPlatformName = SystemPropoerties.VALUE_ANDROID;
 
 		mTestSuites = new ArrayList<XmlSuite>();
 		mTestcaseByCategory = new HashMap<String, List<TestCase>>();
@@ -254,36 +291,45 @@ public class TestContext {
 		}
 	}
 
-	public DesiredCapabilities getConfigedCapabilicities() {
-		String version = CommandUtil
-				.execCmd("adb shell getprop ro.build.version.release");
-		DesiredCapabilities capabilities = new DesiredCapabilities();
-		capabilities.setCapability(CapabilityType.BROWSER_NAME, "");
-		capabilities.setCapability("platformName", mPlatformName);
-		capabilities.setCapability("deviceName", mDeviceName);
-		capabilities.setCapability("platformVersion", version);
-		capabilities.setCapability("newCommandTimeout", 60);
-		capabilities.setCapability("app", mTestApp.getAbsolutePath());
-		capabilities.setCapability("autoLaunch", true);
-		capabilities.setCapability("orientation",
-				SystemPropoerties.VALUE_PORTRAIT);
+	public DesiredCapabilities getCapabilicities() {
+		if (SystemPropoerties.VALUE_ANDROID.equals(mPlatformName)) {
+			DesiredCapabilities capabilities = new DesiredCapabilities();
+			String version = CommandUtil
+					.execCmd("adb shell getprop ro.build.version.release");
+			capabilities.setCapability("platformVersion", version);
 
-		if (Double.valueOf(version.substring(0, 3)) < 4.3) {
-			mApiUnder17 = true;
-			LogUtils.log("Device API under 17 change to use Selendroid");
-			capabilities.setCapability("automationName", "Selendroid");
+			if (Double.valueOf(version.substring(0, 3)) < 4.3) {
+				mApiUnder17 = true;
+				LogUtils.log("Device API under 17 change to use Selendroid");
+				capabilities.setCapability("automationName", "Selendroid");
+			} else {
+				mApiUnder17 = false;
+			}
+			capabilities.setCapability(CapabilityType.BROWSER_NAME, "");
+			capabilities.setCapability("newCommandTimeout", 600);
+			capabilities.setCapability("autoLaunch", true);
+			capabilities.setCapability("orientation",
+					SystemPropoerties.VALUE_PORTRAIT);
+
+			capabilities.setCapability("noSign", true);
+			capabilities.setCapability("noReset", false);
+			capabilities.setCapability("unicodeKeyboard", false);
+			capabilities.setCapability("platformName", mPlatformName);
+			capabilities.setCapability("app", mTestApp.getAbsolutePath());
+			return capabilities;
 		} else {
-			mApiUnder17 = false;
+			String appPath = mTestApp.getAbsolutePath();
+			String bundleName = appPath.substring(appPath.lastIndexOf("/") + 1,
+					appPath.indexOf(".app"));
+			DesiredCapabilities capabilities = IOSCapabilities
+					.iphone(bundleName);
+			capabilities.setCapability("newCommandTimeout", 600);
+			capabilities.setCapability("platformName", mPlatformName);
+			capabilities.setCapability("platformVersion", mIOSVersion);
+			capabilities.setCapability("deviceName", mIOSDevice);
+
+			return capabilities;
 		}
-
-		capabilities.setCapability("noSign", true);
-		capabilities.setCapability("noReset", false);
-		capabilities.setCapability("unicodeKeyboard", false);
-
-		// capabilities.setCapability("androidCoverage",
-		// AppiumConstant.COVERAGE_INSTRUMENTATION);
-
-		return capabilities;
 	}
 
 	public TestCase getConfigScript(String id) {
@@ -299,7 +345,7 @@ public class TestContext {
 	}
 
 	public AppiumDriver getDriver() {
-		return mAppiumDriver;
+		return mWebDriver;
 	}
 
 	public String getTestAppPath() {
@@ -318,11 +364,73 @@ public class TestContext {
 		return mTestcaseByCategory.get(cagetory).get(index);
 	}
 
-	private String userSelectApp(Scanner scanner) {
+	private String userSelectPlatform(Scanner scanner) {
+		while (true) {
+			LogUtils.log("Platform choose:");
+			LogUtils.log("1. Android");
+			LogUtils.log("2. IOS");
+
+			String userInput = scanner.nextLine();
+			try {
+				int index = Integer.valueOf(userInput.trim());
+				if (index == 1) {
+					return SystemPropoerties.VALUE_ANDROID;
+				} else if (index == 2) {
+					return SystemPropoerties.VALUE_IOS;
+				}
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+		}
+	}
+
+	private String userSelectIOSDevice(Scanner scanner) {
+		String[] devices = new String[] { "iPhone 6", "iPhone 6 Plus",
+				"iPhone 5s", "iPhone 5", "iPhone 4s", "iPad 2", "iPad Retina",
+				"iPad Air" };
+		while (true) {
+			LogUtils.log("Choose device:");
+			for (int i = 0; i < devices.length; i++) {
+				LogUtils.log((i + 1) + ". " + devices[i]);
+			}
+
+			String userInput = scanner.nextLine();
+			try {
+				int index = Integer.valueOf(userInput.trim()) - 1;
+				if (index >= 0 && index < devices.length) {
+					return devices[index];
+				}
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	private String userSelectIOSVersion(Scanner scanner) {
+		String[] devices = new String[] { "8.1" };
+		while (true) {
+			LogUtils.log("Choose iOS version:");
+			for (int i = 0; i < devices.length; i++) {
+				LogUtils.log((i + 1) + ". " + devices[i]);
+			}
+
+			String userInput = scanner.nextLine();
+			try {
+				int index = Integer.valueOf(userInput.trim()) - 1;
+				if (index >= 0 && index < devices.length) {
+					return devices[index];
+				}
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	private String userSelectApp(Scanner scanner, String platform) {
 		LogUtils.log("Loading server target apps...");
 		String responseText = HttpUtils.sendGet(
-				"http://autotest.d10970aqcn.alipay.net/autotest/api/testapp",
-				null);
+				"http://autotest.d10970aqcn.alipay.net/autotest/api/testapp?platform="
+						+ platform, null);
 		JSONArray apps = new JSONArray(responseText);
 		for (int i = 0; i < apps.length(); i++) {
 			JSONObject app = apps.getJSONObject(i);

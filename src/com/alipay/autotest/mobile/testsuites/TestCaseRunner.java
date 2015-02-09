@@ -1,12 +1,12 @@
 package com.alipay.autotest.mobile.testsuites;
 
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.ios.IOSDriver;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriverException;
 import org.testng.Assert;
 import org.testng.ITestContext;
@@ -20,11 +20,13 @@ import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
 import com.alipay.autotest.mobile.appium.AppiumHelper;
+import com.alipay.autotest.mobile.appium.LocalAndroidDriver;
 import com.alipay.autotest.mobile.appium.TestContext;
 import com.alipay.autotest.mobile.model.TestAction;
 import com.alipay.autotest.mobile.model.TestActionTypes;
 import com.alipay.autotest.mobile.model.TestCase;
-import com.alipay.autotest.mobile.monitor.Monitor;
+import com.alipay.autotest.mobile.monitor.MonitorFactory;
+import com.alipay.autotest.mobile.monitor.MonitorInterface;
 import com.alipay.autotest.mobile.monitor.ReportHelper;
 import com.alipay.autotest.mobile.utils.AliElementNotFoundException;
 import com.alipay.autotest.mobile.utils.FileNameUtil;
@@ -82,12 +84,12 @@ public class TestCaseRunner {
 						captureDir, driver);
 			}
 			if (testCase.getConfigRef() != null) {
-				TestCase configScript = TestContext.getInstance().getConfigScript(
-						testCase.getConfigRef());
+				TestCase configScript = TestContext.getInstance()
+						.getConfigScript(testCase.getConfigRef());
 				if (configScript != null) {
-					runActions(configScript.getActions(), configScript, caseIndex,
-							captureDir, driver);
-				}	
+					runActions(configScript.getActions(), configScript,
+							caseIndex, captureDir, driver);
+				}
 			}
 		}
 		result = runActions(testCase.getActions(), testCase, caseIndex,
@@ -105,7 +107,8 @@ public class TestCaseRunner {
 		}
 
 		TestAction lastAction = null;
-		Monitor monitor = Monitor.getInstance();
+		MonitorInterface monitor = MonitorFactory.getInstance(TestContext
+				.getInstance().getPlatformName());
 
 		int i = 0;
 		for (TestAction action : actions) {
@@ -138,7 +141,8 @@ public class TestCaseRunner {
 								+ noneElement.getMessage());
 						if (lastAction != null && retry != ACTION_RETRY) {
 							try {
-								LogUtils.log("Retry last action (" + retry + ") : "
+								LogUtils.log("Retry last action (" + retry
+										+ ") : "
 										+ lastAction.getOriginalCommand());
 								AppiumHelper.performAction(driver, lastAction,
 										1);
@@ -230,9 +234,9 @@ public class TestCaseRunner {
 					AppiumHelper.performAction(driver, action,
 							AppiumHelper.DEFAULT_ROLLBACK_WAIT_SECOND);
 				} catch (Exception e) {
-					
+
 				}
-				
+
 				boolean success = true;
 				for (TestAction verify : robackVerifies) {
 					try {
@@ -251,7 +255,11 @@ public class TestCaseRunner {
 			}
 		}
 
-		driver.resetApp();
+		if (driver instanceof LocalAndroidDriver) {
+			((LocalAndroidDriver) driver).resetApp();
+		} else {
+			((IOSDriver) driver).resetApp();
+		}
 	}
 
 	private void configActionParameters(TestAction action, TestCase testcase) {
