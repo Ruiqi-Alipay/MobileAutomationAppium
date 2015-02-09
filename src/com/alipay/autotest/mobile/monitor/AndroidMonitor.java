@@ -203,9 +203,9 @@ public class AndroidMonitor implements MonitorInterface {
 					builder.append(calendar.get(Calendar.SECOND)).append("s");
 
 					try {
-						String name = "report_" + builder.toString();
+						String name = "report_" + builder.toString() + ".report";
 						GZipUtils.zipDirectory(TestFileManager.REPORT_ROOT,
-								TestFileManager.ENVIRONMENT_ROOT, name);
+								new File(TestFileManager.ENVIRONMENT_ROOT, name));
 						TestFileManager.getInstance().deleteTree(
 								TestFileManager.REPORT_ROOT);
 						LogUtils.log("Generate report success: " + name);

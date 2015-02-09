@@ -10,6 +10,7 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.io.IOUtils;
 import org.xmlpull.v1.XmlPullParser;
 
 import android.content.res.AXmlResourceParser;
@@ -22,6 +23,44 @@ import android.util.TypedValue;
  * @version $Id: ApkUtil.java, v 0.1 2014年8月29日 下午6:03:31 qiyi.wxc Exp $
  */
 public class ApkUtil {
+
+	public static String getMainActivityName(String apkUrl) {
+		String packageName = "";
+		ZipFile zipFile = null;
+		try {
+			zipFile = new ZipFile(new File(apkUrl));
+			Enumeration<?> enumeration = zipFile.entries();
+			ZipEntry zipEntry = null;
+			while (enumeration.hasMoreElements()) {
+				zipEntry = (ZipEntry) enumeration.nextElement();
+				if (zipEntry.isDirectory()) {
+
+				} else {
+					if ("AndroidManifest.xml".equals(zipEntry.getName())) {
+						try {
+							String content = IOUtils.toString(
+									zipFile.getInputStream(zipEntry), "UTF-8");
+							LogUtils.log(content);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+		} finally {
+			if (zipFile != null) {
+				try {
+					zipFile.close();
+					zipFile = null;
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return packageName;
+	}
+
 	/**
 	 * @param apkUrl
 	 *            apk文件位置
